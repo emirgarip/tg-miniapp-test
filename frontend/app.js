@@ -21,7 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
       output.appendChild(p);
 
       const img = document.createElement("img");
-      img.src = "./images/sydney.PNG";
+      img.src = "/frontend/images/sydney.PNG";
       img.style.width = "250px";
       img.style.borderRadius = "12px";
       img.style.marginTop = "20px";
@@ -29,22 +29,11 @@ document.addEventListener("DOMContentLoaded", () => {
       img.style.marginLeft = "auto";
       img.style.marginRight = "auto";
       output.appendChild(img);
-
-      if (tg) {
-        tg.showAlert(message);
-      } else {
-        alert(message);
-      }
     } catch (err) {
       output.innerHTML = "";
       const p = document.createElement("p");
       p.textContent = "Failed to fetch: " + err.message;
       output.appendChild(p);
-      if (tg) {
-        tg.showAlert("Error: " + err.message);
-      } else {
-        alert("Error: " + err.message);
-      }
     }
   });
 });
