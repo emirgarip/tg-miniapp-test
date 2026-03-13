@@ -1,20 +1,16 @@
 {
   "name": "telegram-miniapp-test",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Telegram Mini App with backend API",
   "scripts": {
-    "dev": "serve -l 3000 .",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vercel dev",
+    "dev:static": "serve -l 3000 frontend"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "devDependencies": {
-    "serve": "^14.2.1"
-  },
-  "dependencies": {
-    "@vercel/analytics": "^2.0.1"
+    "serve": "^14.2.1",
+    "vercel": "^47.0.0"
   }
 }
