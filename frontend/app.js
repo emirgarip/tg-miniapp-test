@@ -4,8 +4,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const output = document.getElementById("output");
 
   if (tg) {
-    tg.ready();
-    tg.expand();
+    try {
+      tg.ready();
+      tg.expand();
+    } catch (e) {
+      // Not in Telegram WebView, ignore
+    }
   }
 
   helloBtn.addEventListener("click", async () => {
