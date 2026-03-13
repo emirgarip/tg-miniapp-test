@@ -9,19 +9,37 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   helloBtn.addEventListener("click", async () => {
-    output.textContent = "";
     try {
       const response = await fetch("/api/hello");
       const data = await response.json();
       const message = data?.message ?? "No message received";
-      output.textContent = message;
+
+      output.innerHTML = "";
+
+      const p = document.createElement("p");
+      p.textContent = message;
+      output.appendChild(p);
+
+      const img = document.createElement("img");
+      img.src = "./images/sydney.PNG";
+      img.style.width = "250px";
+      img.style.borderRadius = "12px";
+      img.style.marginTop = "20px";
+      img.style.display = "block";
+      img.style.marginLeft = "auto";
+      img.style.marginRight = "auto";
+      output.appendChild(img);
+
       if (tg) {
         tg.showAlert(message);
       } else {
         alert(message);
       }
     } catch (err) {
-      output.textContent = "Failed to fetch: " + err.message;
+      output.innerHTML = "";
+      const p = document.createElement("p");
+      p.textContent = "Failed to fetch: " + err.message;
+      output.appendChild(p);
       if (tg) {
         tg.showAlert("Error: " + err.message);
       } else {
