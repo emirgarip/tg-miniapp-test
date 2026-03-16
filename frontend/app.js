@@ -34,7 +34,13 @@ document.addEventListener("DOMContentLoaded", () => {
         body: formData,
       });
       const data = await response.json();
-      const message = data?.message ?? "No message received";
+      let message = data?.message;
+      if (!message && data?.error) {
+        message = data.error;
+      }
+      if (!message) {
+        message = "No message received";
+      }
 
       output.innerHTML = "";
 
