@@ -35,7 +35,8 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       const data = await response.json();
       let message = data?.message;
-      if (!message && data?.error) {
+      const isError = !!data?.error;
+      if (!message && isError) {
         message = data.error;
       }
       if (!message) {
@@ -48,15 +49,18 @@ document.addEventListener("DOMContentLoaded", () => {
       p.textContent = message;
       output.appendChild(p);
 
-      const img = document.createElement("img");
-      img.src = URL.createObjectURL(file);
-      img.style.width = "250px";
-      img.style.borderRadius = "12px";
-      img.style.marginTop = "20px";
-      img.style.display = "block";
-      img.style.marginLeft = "auto";
-      img.style.marginRight = "auto";
-      output.appendChild(img);
+      // Only show image preview on successful upload
+      if (!isError && response.ok) {
+        const img = document.createElement("img");
+        img.src = URL.createObjectURL(file);
+        img.style.width = "250px";
+        img.style.borderRadius = "12px";
+        img.style.marginTop = "20px";
+        img.style.display = "block";
+        img.style.marginLeft = "auto";
+        img.style.marginRight = "auto";
+        output.appendChild(img);
+      }
     } catch (err) {
       output.innerHTML = "";
       const p = document.createElement("p");
