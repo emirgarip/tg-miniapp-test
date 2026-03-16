@@ -6,6 +6,10 @@ const { uploadToR2 } = require("../backend/storage/r2");
 const { getDb } = require("../backend/db/mongo");
 
 module.exports = async (req, res) => {
+  if (process.env.UPLOAD_ENABLED !== "true") {
+    return res.status(503).json({ error: "Uploads temporarily disabled" });
+  }
+
   if (req.method !== "POST") {
     res.setHeader("Allow", ["POST"]);
     return res.status(405).json({ error: "Method not allowed" });
