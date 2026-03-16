@@ -1,6 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
   const tg = window.Telegram?.WebApp;
   const helloBtn = document.getElementById("hello-btn");
+  const imageInput = document.getElementById("image-input");
   const output = document.getElementById("output");
 
   if (tg) {
@@ -13,8 +14,23 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   helloBtn.addEventListener("click", async () => {
+    const file = imageInput?.files?.[0];
+    if (!file) {
+      output.innerHTML = "";
+      const p = document.createElement("p");
+      p.textContent = "Please select an image first.";
+      output.appendChild(p);
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("image", file);
+
     try {
-      const response = await fetch("/api/hello");
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
       const data = await response.json();
       const message = data?.message ?? "No message received";
 
@@ -25,7 +41,7 @@ document.addEventListener("DOMContentLoaded", () => {
       output.appendChild(p);
 
       const img = document.createElement("img");
-      img.src = "/frontend/images/sydney.PNG";
+      img.src = URL.createObjectURL(file);
       img.style.width = "250px";
       img.style.borderRadius = "12px";
       img.style.marginTop = "20px";
@@ -36,7 +52,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (err) {
       output.innerHTML = "";
       const p = document.createElement("p");
-      p.textContent = "Failed to fetch: " + err.message;
+      p.textContent = "Failed to upload: " + err.message;
       output.appendChild(p);
     }
   });
