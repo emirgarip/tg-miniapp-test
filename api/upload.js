@@ -1,17 +1,25 @@
 const formidable = require("formidable");
+const fs = require("fs");
+const path = require("path");
+const crypto = require("crypto");
+const { uploadToR2 } = require("../backend/storage/r2");
+const { getDb } = require("../backend/db/mongo");
 
-module.exports = (req, res) => {
+module.exports = async (req, res) => {
   if (req.method !== "POST") {
     res.setHeader("Allow", ["POST"]);
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const form = formidable({ multiples: false });
+  const form = formidable({ multiples: false, keepExtensions: true });
 
-  form.parse(req, (err, fields, files) => {
-    if (err) {
-      return res.status(400).json({ error: "Failed to parse form data" });
-    }
+  try {
+    const { files } = await new Promise((resolve, reject) => {
+      form.parse(req, (err, fields, files) => {
+        if (err) return reject(err);
+        resolve({ fields, files });
+      });
+    });
 
     const uploaded = files.image;
     if (!uploaded) {
@@ -19,13 +27,39 @@ module.exports = (req, res) => {
     }
 
     const fileObj = Array.isArray(uploaded) ? uploaded[0] : uploaded;
-    const filename = fileObj.originalFilename || fileObj.newFilename || "unknown";
+    const filepath = fileObj.filepath || fileObj.path;
+
+    if (!filepath) {
+      return res.status(400).json({ error: "Uploaded file path not found" });
+    }
+
+    const modelId = crypto.randomUUID();
+    const key = `original/${modelId}.png`;
+
+    const stream = fs.createReadStream(filepath);
+
+    await uploadToR2(key, stream, "image/png");
+
+    const db = await getDb();
+    const models = db.collection("models");
+
+    await models.insertOne({
+      id: modelId,
+      original_image: key,
+      canonical_image: null,
+      hotel_image: null,
+      created_at: new Date(),
+    });
 
     return res.status(200).json({
-      message: "A surprise for you from backend API!",
-      received: true,
-      filename,
+      message: "Image stored successfully",
+      model_id: modelId,
+      image_path: key,
     });
-  });
+  } catch (err) {
+    console.error("Upload error:", err);
+    return res.status(500).json({ error: "Failed to process upload" });
+  }
 };
+
 
