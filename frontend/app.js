@@ -26,8 +26,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const formData = new FormData();
     formData.append("image", file);
 
+    const uploadUrl = `${window.location.origin}/api/upload`;
+
     try {
-      const response = await fetch("/api/upload", {
+      const response = await fetch(uploadUrl, {
         method: "POST",
         body: formData,
       });
