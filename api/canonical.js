@@ -1,7 +1,6 @@
 const formidable = require("formidable");
 const OpenAI = require("openai");
 const { toFile } = require("openai");
-const { GoogleGenAI } = require("@google/genai");
 const { uploadToR2 } = require("../backend/storage/r2");
 const { downloadFromR2 } = require("../backend/storage/r2_download");
 const { getDb } = require("../backend/db/mongo");
@@ -32,15 +31,8 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const useGemini = process.env.USE_GEMINI === "true";
-  if (useGemini) {
-    if (!process.env.GEMINI_API_KEY) {
-      return res.status(500).json({ error: "GEMINI_API_KEY is not configured." });
-    }
-  } else {
-    if (!process.env.OPENAI_API_KEY) {
-      return res.status(500).json({ error: "OPENAI_API_KEY is not configured." });
-    }
+  if (!process.env.OPENAI_API_KEY) {
+    return res.status(500).json({ error: "OPENAI_API_KEY is not configured." });
   }
 
   const form = formidable({ multiples: false });
@@ -80,70 +72,29 @@ module.exports = async (req, res) => {
 
     const referenceBuffer = await downloadFromR2(model.original_image);
 
-    let canonicalBuffer;
-    let apiProvider = useGemini ? "gemini" : "openai";
-    // User-provided fixed estimates:
-    // - Gemini free tier: $0
-    // - OpenAI: 0.45 cent = $0.0045 per canonical generation
-    let estimatedCost = useGemini ? 0 : 0.0045;
+    const apiProvider = "openai";
+    // User-provided fixed estimate for OpenAI canonical generation.
+    const estimatedCost = 0.45;
 
-    if (useGemini) {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-      // Gemini image generation: use the supported preview image model.
-      // Provide reference image + prompt, request Image modality.
-      const resp = await ai.models.generateContent({
-        model: "gemini-2.0-flash-preview-image-generation",
-        generationConfig: {
-          responseModalities: ["TEXT", "IMAGE"],
-        },
-        contents: [
-          {
-            role: "user",
-            parts: [
-              {
-                inlineData: {
-                  data: referenceBuffer.toString("base64"),
-                  mimeType: "image/png",
-                },
-              },
-              { text: PROMPT },
-            ],
-          },
-        ],
-      });
+    // Use the reference image as input; generate a canonical portrait.
+    // Use toFile() so this works in Node/Vercel (no global File required).
+    const file = await toFile(referenceBuffer, "reference.png", { type: "image/png" });
 
-      const part =
-        resp?.candidates?.[0]?.content?.parts?.find(
-          (p) => p.inlineData && p.inlineData.data
-        ) || null;
+    const result = await openai.images.edit({
+      model: "gpt-image-1",
+      prompt: PROMPT,
+      image: file,
+      size: "1024x1024",
+    });
 
-      if (!part?.inlineData?.data) {
-        throw new Error("Gemini did not return inline image data.");
-      }
-
-      canonicalBuffer = Buffer.from(part.inlineData.data, "base64");
-    } else {
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-      // Use the reference image as input; generate a canonical portrait.
-      // Use toFile() so this works in Node/Vercel (no global File required).
-      const file = await toFile(referenceBuffer, "reference.png", { type: "image/png" });
-
-      const result = await openai.images.edit({
-        model: "gpt-image-1",
-        prompt: PROMPT,
-        image: file,
-        size: "1024x1024",
-      });
-
-      const b64 = result?.data?.[0]?.b64_json;
-      if (!b64) {
-        throw new Error("OpenAI did not return b64_json image data.");
-      }
-
-      canonicalBuffer = Buffer.from(b64, "base64");
+    const b64 = result?.data?.[0]?.b64_json;
+    if (!b64) {
+      throw new Error("OpenAI did not return b64_json image data.");
     }
+
+    const canonicalBuffer = Buffer.from(b64, "base64");
 
     const canonicalKey = `canonical/${modelId}.png`;
 
