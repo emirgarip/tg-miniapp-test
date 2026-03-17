@@ -28,7 +28,7 @@ module.exports = async (req, res) => {
           parts: [
             {
               text:
-                "Convert the Turkish text into a single clean professional English prompt for photorealistic canonical studio portrait generation. Output ONLY the prompt text. No markdown. No quotes. No explanations.\n\nTurkish input:\n" +
+                "Convert the Turkish text into a single clean professional English prompt for photorealistic canonical studio portrait generation.\n\nRules:\n- Output language: English\n- Output ONLY the prompt (no headings, no markdown, no quotes, no explanations)\n- Make it detailed (aim for ~80-140 words)\n- Must explicitly mention: neutral studio lighting, clean/simple background, photorealistic skin texture, stable facial identity, mid-torso (upper body) framing, simple white cotton t-shirt with no logos, calm neutral expression with natural eye contact\n- Do NOT include technical camera/lens settings (no mm, no f-stop, no HDR, no color grading jargon)\n\nTurkish input:\n" +
                 INPUT_TEXT,
             },
           ],
