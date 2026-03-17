@@ -1,7 +1,7 @@
 const { GoogleGenAI } = require("@google/genai");
 const { getDb } = require("../../backend/db/mongo");
 
-const MODEL = "gemini-2.0-flash";
+const MODEL = "gemini-2.5-flash";
 const INPUT_TEXT =
   'bu kadinin promptunu olustur; kizil sacli, yesil gozlu, hafif cilleri olan. sonuc olarak canonical bir portre istiyorum. buna uygun prompt yazarmisin, image istemiyorum eksinlikle sadece prompt!';
 
