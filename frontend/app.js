@@ -49,22 +49,8 @@ document.addEventListener("DOMContentLoaded", () => {
       p.textContent = message;
       output.appendChild(p);
 
-      // Only show image preview on successful upload
+      // Continue only on successful upload
       if (!isError && response.ok) {
-        const originalLabel = document.createElement("p");
-        originalLabel.textContent = "Original image:";
-        output.appendChild(originalLabel);
-
-        const img = document.createElement("img");
-        img.src = URL.createObjectURL(file);
-        img.style.width = "250px";
-        img.style.borderRadius = "12px";
-        img.style.marginTop = "20px";
-        img.style.display = "block";
-        img.style.marginLeft = "auto";
-        img.style.marginRight = "auto";
-        output.appendChild(img);
-
         // If backend returned a model_id, request canonical generation and show it.
         const modelId = data?.model_id;
         if (modelId) {
