@@ -19,8 +19,15 @@
 <body>
   <div class="app-container">
     <h1>Telegram Mini App Test v2</h1>
-    <input type="file" id="image-input" accept="image/*" />
-    <button id="hello-btn">Upload</button>
+    <div class="provider-toggle" role="group" aria-label="AI Provider">
+      <input type="radio" id="provider-gemini" name="provider" value="gemini" />
+      <label for="provider-gemini">Gemini</label>
+
+      <input type="radio" id="provider-openai" name="provider" value="openai" checked />
+      <label for="provider-openai">OpenAI</label>
+    </div>
+
+    <button id="hello-btn">Generate Prompt</button>
     <p id="output" class="output"></p>
   </div>
 

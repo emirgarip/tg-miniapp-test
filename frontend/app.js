@@ -1,8 +1,9 @@
 document.addEventListener("DOMContentLoaded", () => {
   const tg = window.Telegram?.WebApp;
   const helloBtn = document.getElementById("hello-btn");
-  const imageInput = document.getElementById("image-input");
   const output = document.getElementById("output");
+  const providerGemini = document.getElementById("provider-gemini");
+  const providerOpenAI = document.getElementById("provider-openai");
 
   if (tg) {
     try {
@@ -14,24 +15,18 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   helloBtn.addEventListener("click", async () => {
-    const file = imageInput?.files?.[0];
-    if (!file) {
-      output.innerHTML = "";
-      const p = document.createElement("p");
-      p.textContent = "Please select an image first.";
-      output.appendChild(p);
-      return;
-    }
+    const provider =
+      providerGemini?.checked ? "gemini" : providerOpenAI?.checked ? "openai" : "openai";
 
-    const formData = new FormData();
-    formData.append("image", file);
-
-    const uploadUrl = `${window.location.origin}/api/upload`;
+    const endpoint =
+      provider === "gemini" ? "/api/test/gemini-prompt" : "/api/test/openai-prompt";
+    const url = `${window.location.origin}${endpoint}`;
 
     try {
-      const response = await fetch(uploadUrl, {
+      output.textContent = "Generating prompt...";
+
+      const response = await fetch(url, {
         method: "POST",
-        body: formData,
       });
       const data = await response.json();
       let message = data?.message;
@@ -39,68 +34,33 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!message && isError) {
         message = data.error;
       }
-      if (!message) {
-        message = "No message received";
-      }
+      const prompt = data?.prompt;
 
       output.innerHTML = "";
 
-      const p = document.createElement("p");
-      p.textContent = message;
-      output.appendChild(p);
-
-      // Continue only on successful upload
-      if (!isError && response.ok) {
-        // If backend returned a model_id, request canonical generation and show it.
-        const modelId = data?.model_id;
-        if (modelId) {
-          const canonicalStatus = document.createElement("p");
-          canonicalStatus.textContent = "Generating canonical image...";
-          output.appendChild(canonicalStatus);
-
-          const canonicalForm = new FormData();
-          canonicalForm.append("model_id", modelId);
-          canonicalForm.append("image", file);
-
-          const canonicalUrl = `${window.location.origin}/api/canonical`;
-          const canonicalResp = await fetch(canonicalUrl, {
-            method: "POST",
-            body: canonicalForm,
-          });
-          const canonicalData = await canonicalResp.json();
-          if (!canonicalResp.ok) {
-            canonicalStatus.textContent =
-              canonicalData?.error || "Failed to generate canonical image.";
-            return;
-          }
-
-          if (canonicalData?.canonical_image) {
-            canonicalStatus.textContent = "Canonical image:";
-            const canonicalImg = document.createElement("img");
-            canonicalImg.src = `/api/file?key=${encodeURIComponent(
-              canonicalData.canonical_image
-            )}`;
-            canonicalImg.style.width = "250px";
-            canonicalImg.style.borderRadius = "12px";
-            canonicalImg.style.marginTop = "20px";
-            canonicalImg.style.display = "block";
-            canonicalImg.style.marginLeft = "auto";
-            canonicalImg.style.marginRight = "auto";
-            canonicalImg.addEventListener("error", () => {
-              canonicalStatus.textContent =
-                "Canonical generated, but failed to load image.";
-            });
-            output.appendChild(canonicalImg);
-          } else {
-            canonicalStatus.textContent =
-              "Canonical generated, but no image path returned.";
-          }
-        }
+      if (!response.ok || isError) {
+        const p = document.createElement("p");
+        p.textContent = message || "Failed to generate prompt.";
+        output.appendChild(p);
+        return;
       }
+
+      const pre = document.createElement("pre");
+      pre.textContent = prompt || "No prompt returned.";
+      pre.style.whiteSpace = "pre-wrap";
+      pre.style.wordBreak = "break-word";
+      pre.style.marginTop = "12px";
+      pre.style.textAlign = "left";
+      pre.style.color = "#0f172a";
+      pre.style.background = "#ffffff";
+      pre.style.borderRadius = "12px";
+      pre.style.padding = "12px";
+      pre.style.boxShadow = "0 6px 18px rgba(0, 0, 0, 0.06)";
+      output.appendChild(pre);
     } catch (err) {
       output.innerHTML = "";
       const p = document.createElement("p");
-      p.textContent = "Failed to upload: " + err.message;
+      p.textContent = "Failed to generate prompt: " + err.message;
       output.appendChild(p);
     }
   });

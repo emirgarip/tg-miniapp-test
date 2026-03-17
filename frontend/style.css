@@ -28,6 +28,36 @@ body {
   margin-bottom: 16px;
 }
 
+.provider-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 999px;
+  background: #eef2f7;
+  margin-bottom: 14px;
+}
+
+.provider-toggle input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.provider-toggle label {
+  padding: 8px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: #334155;
+  user-select: none;
+}
+
+.provider-toggle input[type="radio"]:checked + label {
+  background: #2ea6ff;
+  color: #ffffff;
+}
+
 #hello-btn {
   padding: 10px 20px;
   border-radius: 999px;
