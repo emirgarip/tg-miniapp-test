@@ -84,16 +84,19 @@ module.exports = async (req, res) => {
     let apiProvider = useGemini ? "gemini" : "openai";
     // User-provided fixed estimates:
     // - Gemini free tier: $0
-    // - OpenAI: 45 cent = $0.45 per canonical generation
-    let estimatedCost = useGemini ? 0 : 0.45;
+    // - OpenAI: 0.45 cent = $0.0045 per canonical generation
+    let estimatedCost = useGemini ? 0 : 0.0045;
 
     if (useGemini) {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-      // Gemini image generation/editing: provide the reference image + prompt.
-      // The SDK returns an image as inline base64 data in the candidates parts.
+      // Gemini image generation: use the supported preview image model.
+      // Provide reference image + prompt, request Image modality.
       const resp = await ai.models.generateContent({
-        model: "gemini-2.0-flash-image-generation",
+        model: "gemini-2.0-flash-preview-image-generation",
+        generationConfig: {
+          responseModalities: ["TEXT", "IMAGE"],
+        },
         contents: [
           {
             role: "user",
