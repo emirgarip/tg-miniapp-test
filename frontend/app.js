@@ -60,6 +60,32 @@ document.addEventListener("DOMContentLoaded", () => {
         img.style.marginLeft = "auto";
         img.style.marginRight = "auto";
         output.appendChild(img);
+
+        // If backend returned a model_id, request canonical generation and show it.
+        const modelId = data?.model_id;
+        if (modelId) {
+          const canonicalForm = new FormData();
+          canonicalForm.append("model_id", modelId);
+          canonicalForm.append("image", file);
+
+          const canonicalUrl = `${window.location.origin}/api/canonical`;
+          const canonicalResp = await fetch(canonicalUrl, {
+            method: "POST",
+            body: canonicalForm,
+          });
+          const canonicalData = await canonicalResp.json();
+          if (canonicalResp.ok && canonicalData?.canonical_image) {
+            const canonicalImg = document.createElement("img");
+            canonicalImg.src = `/${canonicalData.canonical_image}`;
+            canonicalImg.style.width = "250px";
+            canonicalImg.style.borderRadius = "12px";
+            canonicalImg.style.marginTop = "20px";
+            canonicalImg.style.display = "block";
+            canonicalImg.style.marginLeft = "auto";
+            canonicalImg.style.marginRight = "auto";
+            output.appendChild(canonicalImg);
+          }
+        }
       }
     } catch (err) {
       output.innerHTML = "";
