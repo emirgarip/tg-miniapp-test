@@ -1,9 +1,8 @@
 const OpenAI = require("openai");
 const { getDb } = require("../../backend/db/mongo");
+const { INSTRUCTION, INPUT_TEXT } = require("./prompt-config");
 
 const MODEL = "gpt-5-mini";
-const INPUT_TEXT =
-  'bu kadinin promptunu olustur; kizil sacli, yesil gozlu, hafif cilleri olan. sonuc olarak canonical bir portre istiyorum. buna uygun prompt yazarmisin, image istemiyorum eksinlikle sadece prompt!';
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
@@ -22,8 +21,7 @@ module.exports = async (req, res) => {
 
     const response = await client.responses.create({
       model: MODEL,
-      instructions:
-        "Convert the Turkish text into a single clean professional English prompt for photorealistic canonical studio portrait generation. Output ONLY the prompt text. No markdown. No quotes. No explanations.",
+      instructions: INSTRUCTION,
       input: INPUT_TEXT,
     });
 

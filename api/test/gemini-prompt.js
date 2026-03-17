@@ -1,9 +1,8 @@
 const { GoogleGenAI } = require("@google/genai");
 const { getDb } = require("../../backend/db/mongo");
+const { INSTRUCTION, INPUT_TEXT } = require("./prompt-config");
 
 const MODEL = "gemini-2.5-flash";
-const INPUT_TEXT =
-  'bu kadinin promptunu olustur; kizil sacli, yesil gozlu, hafif cilleri olan. sonuc olarak canonical bir portre istiyorum. buna uygun prompt yazarmisin, image istemiyorum eksinlikle sadece prompt!';
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
@@ -25,13 +24,7 @@ module.exports = async (req, res) => {
       contents: [
         {
           role: "user",
-          parts: [
-            {
-              text:
-                "Convert the Turkish text into a single clean professional English prompt for photorealistic canonical studio portrait generation.\n\nRules:\n- Output language: English\n- Output ONLY the prompt (no headings, no markdown, no quotes, no explanations)\n- Make it detailed (aim for ~80-140 words)\n- Must explicitly mention: neutral studio lighting, clean/simple background, photorealistic skin texture, stable facial identity, mid-torso (upper body) framing, simple white cotton t-shirt with no logos, calm neutral expression with natural eye contact\n- Do NOT include technical camera/lens settings (no mm, no f-stop, no HDR, no color grading jargon)\n\nTurkish input:\n" +
-                INPUT_TEXT,
-            },
-          ],
+          parts: [{ text: INSTRUCTION + "\n\nTurkish input:\n" + INPUT_TEXT }],
         },
       ],
     });
