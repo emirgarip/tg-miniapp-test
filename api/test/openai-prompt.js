@@ -2,7 +2,7 @@ const OpenAI = require("openai");
 const { getDb } = require("../../backend/db/mongo");
 const { INSTRUCTION, INPUT_TEXT } = require("./prompt-config");
 
-const MODEL = "gpt-5-mini";
+const MODEL = "gpt-4.1-mini";
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
