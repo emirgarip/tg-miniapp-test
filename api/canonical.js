@@ -1,6 +1,6 @@
 const formidable = require("formidable");
-const crypto = require("crypto");
 const OpenAI = require("openai");
+const { toFile } = require("openai");
 const { uploadToR2 } = require("../backend/storage/r2");
 const { downloadFromR2 } = require("../backend/storage/r2_download");
 const { getDb } = require("../backend/db/mongo");
@@ -36,6 +36,7 @@ module.exports = async (req, res) => {
   }
 
   const form = formidable({ multiples: false });
+  let modelId = "";
 
   try {
     const { fields } = await new Promise((resolve, reject) => {
@@ -45,7 +46,7 @@ module.exports = async (req, res) => {
       });
     });
 
-    const modelId = String(fields.model_id || "").trim();
+    modelId = String(fields.model_id || "").trim();
     if (!modelId) {
       return res.status(400).json({ error: "model_id is required" });
     }
@@ -73,10 +74,8 @@ module.exports = async (req, res) => {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
     // Use the reference image as input; generate a canonical portrait.
-    // openai SDK accepts Web/File inputs in Node; construct a File from the buffer.
-    const file = new File([referenceBuffer], `reference-${crypto.randomUUID()}.png`, {
-      type: "image/png",
-    });
+    // Use toFile() so this works in Node/Vercel (no global File required).
+    const file = await toFile(referenceBuffer, "reference.png", { type: "image/png" });
 
     const result = await openai.images.edit({
       model: "gpt-image-1",
@@ -116,7 +115,6 @@ module.exports = async (req, res) => {
     try {
       const db = await getDb();
       const models = db.collection("models");
-      const modelId = String(req?.query?.model_id || "");
       if (modelId) {
         await models.updateOne(
           { id: modelId },

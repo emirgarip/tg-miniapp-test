@@ -76,7 +76,9 @@ document.addEventListener("DOMContentLoaded", () => {
           const canonicalData = await canonicalResp.json();
           if (canonicalResp.ok && canonicalData?.canonical_image) {
             const canonicalImg = document.createElement("img");
-            canonicalImg.src = `/${canonicalData.canonical_image}`;
+            canonicalImg.src = `/api/file?key=${encodeURIComponent(
+              canonicalData.canonical_image
+            )}`;
             canonicalImg.style.width = "250px";
             canonicalImg.style.borderRadius = "12px";
             canonicalImg.style.marginTop = "20px";
