@@ -51,6 +51,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Only show image preview on successful upload
       if (!isError && response.ok) {
+        const originalLabel = document.createElement("p");
+        originalLabel.textContent = "Original image:";
+        output.appendChild(originalLabel);
+
         const img = document.createElement("img");
         img.src = URL.createObjectURL(file);
         img.style.width = "250px";
@@ -64,6 +68,10 @@ document.addEventListener("DOMContentLoaded", () => {
         // If backend returned a model_id, request canonical generation and show it.
         const modelId = data?.model_id;
         if (modelId) {
+          const canonicalStatus = document.createElement("p");
+          canonicalStatus.textContent = "Generating canonical image...";
+          output.appendChild(canonicalStatus);
+
           const canonicalForm = new FormData();
           canonicalForm.append("model_id", modelId);
           canonicalForm.append("image", file);
@@ -74,7 +82,14 @@ document.addEventListener("DOMContentLoaded", () => {
             body: canonicalForm,
           });
           const canonicalData = await canonicalResp.json();
-          if (canonicalResp.ok && canonicalData?.canonical_image) {
+          if (!canonicalResp.ok) {
+            canonicalStatus.textContent =
+              canonicalData?.error || "Failed to generate canonical image.";
+            return;
+          }
+
+          if (canonicalData?.canonical_image) {
+            canonicalStatus.textContent = "Canonical image:";
             const canonicalImg = document.createElement("img");
             canonicalImg.src = `/api/file?key=${encodeURIComponent(
               canonicalData.canonical_image
@@ -85,7 +100,14 @@ document.addEventListener("DOMContentLoaded", () => {
             canonicalImg.style.display = "block";
             canonicalImg.style.marginLeft = "auto";
             canonicalImg.style.marginRight = "auto";
+            canonicalImg.addEventListener("error", () => {
+              canonicalStatus.textContent =
+                "Canonical generated, but failed to load image.";
+            });
             output.appendChild(canonicalImg);
+          } else {
+            canonicalStatus.textContent =
+              "Canonical generated, but no image path returned.";
           }
         }
       }
