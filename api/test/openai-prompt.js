@@ -3,6 +3,26 @@ const { getDb } = require("../../backend/db/mongo");
 const { SYSTEM_PROMPT } = require("./prompt-config");
 
 const MODEL = "gpt-4.1-mini";
+const REQUIRED_NEGATIVE_PROMPT =
+  "Negative prompt: no text, no watermark, no distortion, no extra limbs, no unnatural anatomy, no blur";
+
+function normalizeFinalPrompt(rawPrompt) {
+  let prompt = (rawPrompt || "").trim();
+  if (!prompt) return prompt;
+
+  // Ensure required negative prompt block exists.
+  if (!/negative prompt:/i.test(prompt)) {
+    prompt = `${prompt}\n${REQUIRED_NEGATIVE_PROMPT}`;
+  }
+
+  // If output is too short, append a deterministic realism/camera enrichment block.
+  if (prompt.length < 900) {
+    prompt +=
+      "\nRendering quality and realism notes: photorealistic skin texture with visible pores and natural micro-contrast, individual hair strands with realistic flyaways, physically plausible shadows and highlights, natural color grading with high dynamic range, subtle tonal roll-off, and clean cinematic realism suitable for modern image-generation models. Camera and composition: upper-body portrait framing with an 85mm portrait lens feel, shallow cinematic depth of field, subject in sharp focus with smooth background blur, perspective-consistent geometry, and clear foreground/background separation.";
+  }
+
+  return prompt;
+}
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
@@ -39,6 +59,7 @@ module.exports = async (req, res) => {
       markerIndex >= 0
         ? output.slice(markerIndex + finalPromptMarker.length).trim()
         : output;
+    const normalizedFinalPrompt = normalizeFinalPrompt(finalPrompt);
     const structuredAnalysis =
       markerIndex >= 0 ? output.slice(0, markerIndex).trim() : "Structured Analysis\n- Not available";
 
@@ -57,8 +78,8 @@ module.exports = async (req, res) => {
       model: MODEL,
       type: "prompt_generation",
       structured_analysis: structuredAnalysis,
-      final_prompt: finalPrompt,
-      prompt: finalPrompt,
+      final_prompt: normalizedFinalPrompt,
+      prompt: normalizedFinalPrompt,
       latency_ms: latencyMs,
     });
   } catch (err) {
