@@ -1,31 +1,39 @@
+// STEP A: Extraction-only system prompt for gpt-4.1-mini.
+// The model must ONLY extract. It must NOT write the final prompt.
 const EXTRACTION_SYSTEM_PROMPT = `
-You are STEP A (Extraction) in a 3-step prompt pipeline.
-Input may be in ANY language. Understand semantics language-agnostically.
+You are STEP A (Extraction) of a strict multi-step image-prompt pipeline.
+Your ONLY job is to extract explicit visual attributes from the user's input.
 
-CRITICAL FOR STEP A:
-- Extract only what the user explicitly states or very clearly implies.
-- Do NOT invent missing details.
-- Do NOT complete defaults.
-- Preserve user intent exactly (normalized to English).
-- If attribute is missing, set value to null.
-- If attribute exists, keep meaning unchanged.
+Input language: ANY. Understand meaning semantically, language-agnostically.
+Output language: English only, JSON only.
 
-Safety:
-- If user implies a minor or ambiguous underage subject, set refusal=true.
-- If user includes illegal/exploitative content, set refusal=true.
-- If user requests explicit sexual/nudity content, do not reproduce explicitly; describe this in safety_adjustments and keep extraction policy-safe.
-- If user requests real person/celebrity replication, convert to "fictional adult inspired by general traits" in safety_adjustments.
+CRITICAL RULES:
+- Extract ONLY what the user explicitly states or directly implies.
+- Do NOT invent, assume, or complete missing fields.
+- Do NOT write a final image prompt.
+- Do NOT enrich or creatively expand the user's request.
+- Do NOT override the user's stated values.
+- If a field is not provided, set it to null.
+- Normalize crude wording into safe, visually useful English equivalents.
 
-Age rule:
-- Return numeric age range only (e.g. "25-30", "35-45") when age is provided/implied.
-- Do not output vague values like "adult", "young", "mature" for age_range.
+AGE RULES:
+- If age is explicitly stated, convert to numeric range (e.g. "25-30", "35-45").
+- If age is implied (e.g. "young woman" = 20-28, "middle-aged" = 38-50), convert.
+- If no age is provided, set age_range = null.
+- Never output vague strings like "adult", "young", or "mature" for age_range.
 
-Return ONLY valid JSON, no markdown, no extra text, with this exact shape:
+SAFETY:
+- If input implies a minor or ambiguous underage subject, set refusal=true.
+- If input includes illegal or exploitative content, set refusal=true.
+- If input requests explicit sexual content or nudity, do not include literally; note in safety_adjustments with a safe equivalent.
+- If input requests real person or celebrity replication, set safety_adjustments to "fictional adult character inspired by general traits".
+
+Return ONLY valid JSON matching this exact shape (no markdown, no explanation):
 {
   "input_language": "string",
   "subject_type": "string",
   "refusal": false,
-  "safety_reason": "string|null",
+  "safety_reason": null,
   "safety_flags": {
     "minor_or_ambiguous_underage": false,
     "explicit_or_nudity_request": false,
@@ -35,61 +43,58 @@ Return ONLY valid JSON, no markdown, no extra text, with this exact shape:
   "extracted": {
     "gender": null,
     "age_range": null,
-    "framing": null,
     "face": null,
     "hair": { "color": null, "style": null },
     "eyes": { "color": null, "details": null },
     "expression": null,
-    "body": { "proportions": null, "emphasis": null, "emphasis_strength": null },
+    "body": { "type": null, "emphasis": null, "emphasis_strength": null },
     "pose": null,
     "clothing": null,
     "environment": { "type": null, "details": null },
     "lighting": null,
     "camera": null,
-    "realism_quality": null,
+    "style_cues": null,
     "safety_adjustments": null
   }
 }
 `.trim();
 
-const DEFAULT_CHARACTER_SPEC = {
+// Sensible defaults used by the normalizer for missing fields.
+const DEFAULTS = {
   gender: "adult woman",
   age_range: "25-30",
-  framing: "mid-torso portrait framing",
-  face: "balanced facial proportions, natural skin tone, soft natural skin texture with visible pores",
+  face: "balanced facial proportions, natural skin tone, realistic skin texture",
   hair: {
-    color: "natural dark blonde",
-    style: "soft layered strands with realistic flyaways and refined texture",
+    color: "dark blonde",
+    style: "natural fall with soft layered strands",
   },
   eyes: {
-    color: "natural hazel",
-    details: "clear eyes with soft catchlights and natural eye definition",
+    color: "hazel",
+    details: "clear definition with soft natural catchlights",
   },
-  expression: "calm confident expression with relaxed facial muscles",
+  expression: "calm, confident",
   body: {
-    proportions: "balanced proportions with a believable silhouette",
-    emphasis: "controlled emphasis on natural body lines",
+    type: "balanced proportions",
+    emphasis: "natural silhouette",
     emphasis_strength: "medium",
   },
-  pose: "relaxed upright posture with graceful shoulder and neck alignment",
-  clothing: "refined contemporary wardrobe with realistic fabric weave and subtle folds",
+  pose: "relaxed upright posture",
+  clothing: "contemporary wardrobe, refined styling",
   environment: {
     type: "studio",
-    details: "clean background with soft environmental depth and subtle tonal variation",
+    details: "clean background with soft depth",
   },
-  lighting: "soft natural daylight from one side with gentle fill and realistic shadow falloff",
-  camera:
-    "85mm portrait lens feel, shallow cinematic depth of field, sharp subject focus and naturally blurred background",
-  realism_quality:
-    "photorealistic skin texture, visible pores, individual hair strands, natural color grading, high dynamic range",
+  lighting: null, // resolved by planner from environment
+  camera: null,   // resolved by planner from subject_emphasis
+  style_cues: "photorealistic",
   safety_adjustments: "none",
 };
 
 const NEGATIVE_PROMPT =
-  "no text, no watermark, no distortion, no extra limbs, no unnatural anatomy, no blur";
+  "no text, no watermark, no distortion, no extra limbs, no unnatural anatomy, no blur, no chromatic aberration";
 
 module.exports = {
   EXTRACTION_SYSTEM_PROMPT,
-  DEFAULT_CHARACTER_SPEC,
+  DEFAULTS,
   NEGATIVE_PROMPT,
 };

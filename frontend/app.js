@@ -10,28 +10,118 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       tg.ready();
       tg.expand();
-    } catch (e) {
-      // Not in Telegram WebView, ignore
-    }
+    } catch (_) {}
   }
 
-  function renderError(message) {
-    output.innerHTML = "";
-    const p = document.createElement("p");
-    p.textContent = message;
-    output.appendChild(p);
-    copyBtn.hidden = true;
-  }
-
+  // ─── hint ────────────────────────────────────────────────────────────────
   function updateHint() {
     const len = userInput.value.trim().length;
     hint.textContent = `Minimum 20 characters (${len}/20)`;
     hint.style.color = len >= 20 ? "#16a34a" : "#64748b";
   }
-
   updateHint();
   userInput.addEventListener("input", updateHint);
 
+  // ─── helpers ─────────────────────────────────────────────────────────────
+  function renderError(message) {
+    output.innerHTML = "";
+    const p = document.createElement("p");
+    p.className = "error-message";
+    p.textContent = message;
+    output.appendChild(p);
+    copyBtn.hidden = true;
+  }
+
+  function makeSection(title, content, accent) {
+    const wrap = document.createElement("div");
+    wrap.className = "result-block" + (accent ? " result-block--accent" : "");
+
+    const h = document.createElement("div");
+    h.className = "result-block__title";
+    h.textContent = title;
+    wrap.appendChild(h);
+
+    const body = document.createElement("div");
+    body.className = "result-block__body";
+    body.textContent = content;
+    wrap.appendChild(body);
+
+    return wrap;
+  }
+
+  function makeBlocksSection(blocks) {
+    const LABELS = {
+      subject: "Subject",
+      age: "Age",
+      face: "Face",
+      hair: "Hair",
+      eyes_expression: "Eyes & Expression",
+      body: "Body",
+      clothing: "Clothing",
+      pose: "Pose",
+      environment: "Environment",
+      lighting: "Lighting",
+      camera: "Camera & Composition",
+      quality: "Quality & Realism",
+      negative: "Negative Prompt",
+    };
+
+    const wrap = document.createElement("div");
+    wrap.className = "result-block";
+
+    const h = document.createElement("div");
+    h.className = "result-block__title";
+    h.textContent = "Prompt Blocks";
+    wrap.appendChild(h);
+
+    for (const [key, text] of Object.entries(blocks)) {
+      const label = LABELS[key] || key;
+
+      const row = document.createElement("div");
+      row.className = "block-row";
+
+      const badge = document.createElement("span");
+      badge.className = "block-badge";
+      badge.textContent = label;
+      row.appendChild(badge);
+
+      const val = document.createElement("div");
+      val.className = "block-value";
+      val.textContent = text;
+      row.appendChild(val);
+
+      wrap.appendChild(row);
+    }
+    return wrap;
+  }
+
+  function formatPlanning(vp) {
+    if (!vp) return "Not available";
+    return [
+      `Subject emphasis    : ${vp.subject_emphasis}`,
+      `Framing strategy    : ${vp.framing_strategy}`,
+      `Composition goal    : ${vp.composition_goal}`,
+    ].join("\n");
+  }
+
+  function formatSpec(spec) {
+    if (!spec) return "Not available";
+    const lines = [];
+    function walk(obj, prefix) {
+      for (const [k, v] of Object.entries(obj)) {
+        const key = prefix ? `${prefix}.${k}` : k;
+        if (v && typeof v === "object" && "value" in v) {
+          lines.push(`${key} [${v.source}]: ${v.value}`);
+        } else if (v && typeof v === "object") {
+          walk(v, key);
+        }
+      }
+    }
+    walk(spec, "");
+    return lines.join("\n");
+  }
+
+  // ─── main click ──────────────────────────────────────────────────────────
   helloBtn.addEventListener("click", async () => {
     const input = userInput.value.trim();
     if (input.length < 20) {
@@ -39,77 +129,98 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const url = `${window.location.origin}/api/test/openai-prompt`;
-
     try {
       helloBtn.disabled = true;
       copyBtn.hidden = true;
-      output.textContent = "Generating prompt...";
+      output.innerHTML = "";
 
-      const response = await fetch(url, {
+      const loading = document.createElement("p");
+      loading.className = "loading-msg";
+      loading.textContent = "Running pipeline… this may take a few seconds.";
+      output.appendChild(loading);
+
+      const response = await fetch(`${window.location.origin}/api/test/openai-prompt`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ input }),
       });
       const data = await response.json();
-      const isError = !!data?.error || !response.ok;
 
       output.innerHTML = "";
 
-      if (isError) {
-        renderError(data?.error || "Failed to generate prompt.");
+      if (data?.error) {
+        renderError(data.error);
         return;
       }
 
-      const analysisBlock = document.createElement("div");
-      analysisBlock.className = "result-block";
-      analysisBlock.textContent = data.structured_analysis || "Structured Analysis\n- Not available";
-      output.appendChild(analysisBlock);
+      if (data.refusal) {
+        renderError(data.final_prompt);
+        return;
+      }
 
-      const extractedBlock = document.createElement("div");
-      extractedBlock.className = "result-block";
-      extractedBlock.textContent = `Extracted Attributes (User)\n${
-        (data.extracted_attributes || []).join("\n") || "None"
-      }`;
-      output.appendChild(extractedBlock);
+      // A. Structured Analysis
+      output.appendChild(
+        makeSection("Structured Analysis", data.structured_analysis || "Not available")
+      );
 
-      const autoBlock = document.createElement("div");
-      autoBlock.className = "result-block";
-      autoBlock.textContent = `Auto-filled Attributes\n${
-        (data.auto_filled_attributes || []).join("\n") || "None"
-      }`;
-      output.appendChild(autoBlock);
+      // B. Extracted Attributes (user-provided)
+      const extracted = data.extracted_attributes || [];
+      output.appendChild(
+        makeSection(
+          `Extracted Attributes (${extracted.length})`,
+          extracted.length ? extracted.join("\n") : "None — no explicit attributes detected"
+        )
+      );
 
-      const specBlock = document.createElement("div");
-      specBlock.className = "result-block";
-      specBlock.textContent = `Character Spec\n${JSON.stringify(
-        data.character_spec || {},
-        null,
-        2
-      )}`;
-      output.appendChild(specBlock);
+      // C. Auto-filled / Normalized Attributes
+      const auto = data.auto_filled_attributes || [];
+      output.appendChild(
+        makeSection(
+          `Auto-filled Attributes (${auto.length})`,
+          auto.length ? auto.join("\n") : "None"
+        )
+      );
 
-      const promptBlock = document.createElement("div");
-      promptBlock.className = "result-block";
-      promptBlock.textContent = `Final Prompt\n${data.final_prompt || "Not available"}`;
-      output.appendChild(promptBlock);
+      // D. Visual Planning
+      output.appendChild(
+        makeSection("Visual Planning", formatPlanning(data.visual_planning))
+      );
 
+      // E. Character Spec
+      output.appendChild(
+        makeSection("Character Spec", formatSpec(data.character_spec))
+      );
+
+      // F. Prompt Blocks
+      if (data.prompt_blocks) {
+        output.appendChild(makeBlocksSection(data.prompt_blocks));
+      }
+
+      // G. Final Prompt
+      output.appendChild(
+        makeSection("Final Prompt", data.final_prompt || "Not available", true)
+      );
+
+      // H. Latency note
+      if (data.latency_ms) {
+        const meta = document.createElement("p");
+        meta.className = "meta-note";
+        meta.textContent = `Model: ${data.model} · Latency: ${data.latency_ms} ms`;
+        output.appendChild(meta);
+      }
+
+      // Copy button
       copyBtn.hidden = false;
       copyBtn.onclick = async () => {
         try {
           await navigator.clipboard.writeText(data.final_prompt || "");
           copyBtn.textContent = "Copied!";
-          setTimeout(() => {
-            copyBtn.textContent = "Copy Final Prompt";
-          }, 1200);
         } catch (_) {
           copyBtn.textContent = "Copy failed";
-          setTimeout(() => {
-            copyBtn.textContent = "Copy Final Prompt";
-          }, 1200);
         }
+        setTimeout(() => {
+          copyBtn.textContent = "Copy Final Prompt";
+        }, 1400);
       };
     } catch (err) {
       renderError("Failed to generate prompt: " + err.message);
