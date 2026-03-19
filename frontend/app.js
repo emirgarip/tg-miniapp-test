@@ -68,6 +68,20 @@ document.addEventListener("DOMContentLoaded", () => {
       analysisBlock.textContent = data.structured_analysis || "Structured Analysis\n- Not available";
       output.appendChild(analysisBlock);
 
+      const extractedBlock = document.createElement("div");
+      extractedBlock.className = "result-block";
+      extractedBlock.textContent = `Extracted Attributes (User)\n${
+        (data.extracted_attributes || []).join("\n") || "None"
+      }`;
+      output.appendChild(extractedBlock);
+
+      const autoBlock = document.createElement("div");
+      autoBlock.className = "result-block";
+      autoBlock.textContent = `Auto-filled Attributes\n${
+        (data.auto_filled_attributes || []).join("\n") || "None"
+      }`;
+      output.appendChild(autoBlock);
+
       const specBlock = document.createElement("div");
       specBlock.className = "result-block";
       specBlock.textContent = `Character Spec\n${JSON.stringify(
