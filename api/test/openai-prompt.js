@@ -1,6 +1,6 @@
 const OpenAI = require("openai");
 const { getDb } = require("../../backend/db/mongo");
-const { INSTRUCTION, INPUT_TEXT } = require("./prompt-config");
+const { SYSTEM_PROMPT } = require("./prompt-config");
 
 const MODEL = "gpt-4.1-mini";
 
@@ -14,6 +14,11 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: "OPENAI_API_KEY is not configured." });
   }
 
+  const inputText = String(req.body?.input || "").trim();
+  if (inputText.length < 20) {
+    return res.status(400).json({ error: "Please enter at least 20 characters." });
+  }
+
   const startedAt = Date.now();
 
   try {
@@ -21,12 +26,21 @@ module.exports = async (req, res) => {
 
     const response = await client.responses.create({
       model: MODEL,
-      instructions: INSTRUCTION,
-      input: INPUT_TEXT,
+      instructions: SYSTEM_PROMPT,
+      input: inputText,
     });
 
-    const prompt = (response.output_text || "").trim();
+    const output = (response.output_text || "").trim();
     const latencyMs = Date.now() - startedAt;
+
+    const finalPromptMarker = "Final Prompt";
+    const markerIndex = output.indexOf(finalPromptMarker);
+    const finalPrompt =
+      markerIndex >= 0
+        ? output.slice(markerIndex + finalPromptMarker.length).trim()
+        : output;
+    const structuredAnalysis =
+      markerIndex >= 0 ? output.slice(0, markerIndex).trim() : "Structured Analysis\n- Not available";
 
     const db = await getDb();
     await db.collection("ai_logs").insertOne({
@@ -42,7 +56,9 @@ module.exports = async (req, res) => {
       provider: "openai",
       model: MODEL,
       type: "prompt_generation",
-      prompt,
+      structured_analysis: structuredAnalysis,
+      final_prompt: finalPrompt,
+      prompt: finalPrompt,
       latency_ms: latencyMs,
     });
   } catch (err) {

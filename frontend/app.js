@@ -1,9 +1,10 @@
 document.addEventListener("DOMContentLoaded", () => {
   const tg = window.Telegram?.WebApp;
   const helloBtn = document.getElementById("hello-btn");
+  const userInput = document.getElementById("user-input");
+  const hint = document.getElementById("hint");
   const output = document.getElementById("output");
-  const providerGemini = document.getElementById("provider-gemini");
-  const providerOpenAI = document.getElementById("provider-openai");
+  const copyBtn = document.getElementById("copy-btn");
 
   if (tg) {
     try {
@@ -14,54 +15,83 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  helloBtn.addEventListener("click", async () => {
-    const provider =
-      providerGemini?.checked ? "gemini" : providerOpenAI?.checked ? "openai" : "openai";
+  function renderError(message) {
+    output.innerHTML = "";
+    const p = document.createElement("p");
+    p.textContent = message;
+    output.appendChild(p);
+    copyBtn.hidden = true;
+  }
 
-    const endpoint =
-      provider === "gemini" ? "/api/test/gemini-prompt" : "/api/test/openai-prompt";
-    const url = `${window.location.origin}${endpoint}`;
+  function updateHint() {
+    const len = userInput.value.trim().length;
+    hint.textContent = `Minimum 20 characters (${len}/20)`;
+    hint.style.color = len >= 20 ? "#16a34a" : "#64748b";
+  }
+
+  updateHint();
+  userInput.addEventListener("input", updateHint);
+
+  helloBtn.addEventListener("click", async () => {
+    const input = userInput.value.trim();
+    if (input.length < 20) {
+      renderError("Please enter at least 20 characters.");
+      return;
+    }
+
+    const url = `${window.location.origin}/api/test/openai-prompt`;
 
     try {
+      helloBtn.disabled = true;
+      copyBtn.hidden = true;
       output.textContent = "Generating prompt...";
 
       const response = await fetch(url, {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ input }),
       });
       const data = await response.json();
-      let message = data?.message;
-      const isError = !!data?.error;
-      if (!message && isError) {
-        message = data.error;
-      }
-      const prompt = data?.prompt;
+      const isError = !!data?.error || !response.ok;
 
       output.innerHTML = "";
 
-      if (!response.ok || isError) {
-        const p = document.createElement("p");
-        p.textContent = message || "Failed to generate prompt.";
-        output.appendChild(p);
+      if (isError) {
+        renderError(data?.error || "Failed to generate prompt.");
         return;
       }
 
-      const pre = document.createElement("pre");
-      pre.textContent = prompt || "No prompt returned.";
-      pre.style.whiteSpace = "pre-wrap";
-      pre.style.wordBreak = "break-word";
-      pre.style.marginTop = "12px";
-      pre.style.textAlign = "left";
-      pre.style.color = "#0f172a";
-      pre.style.background = "#ffffff";
-      pre.style.borderRadius = "12px";
-      pre.style.padding = "12px";
-      pre.style.boxShadow = "0 6px 18px rgba(0, 0, 0, 0.06)";
-      output.appendChild(pre);
+      const analysisBlock = document.createElement("div");
+      analysisBlock.className = "result-block";
+      analysisBlock.textContent = data.structured_analysis || "Structured Analysis\n- Not available";
+      output.appendChild(analysisBlock);
+
+      const promptBlock = document.createElement("div");
+      promptBlock.className = "result-block";
+      promptBlock.textContent = `Final Prompt\n${data.final_prompt || "Not available"}`;
+      output.appendChild(promptBlock);
+
+      copyBtn.hidden = false;
+      copyBtn.onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(data.final_prompt || "");
+          copyBtn.textContent = "Copied!";
+          setTimeout(() => {
+            copyBtn.textContent = "Copy Final Prompt";
+          }, 1200);
+        } catch (_) {
+          copyBtn.textContent = "Copy failed";
+          setTimeout(() => {
+            copyBtn.textContent = "Copy Final Prompt";
+          }, 1200);
+        }
+      };
     } catch (err) {
-      output.innerHTML = "";
-      const p = document.createElement("p");
-      p.textContent = "Failed to generate prompt: " + err.message;
-      output.appendChild(p);
+      renderError("Failed to generate prompt: " + err.message);
+    } finally {
+      helloBtn.disabled = false;
     }
   });
 });
