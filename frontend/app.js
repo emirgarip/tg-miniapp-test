@@ -68,6 +68,15 @@ document.addEventListener("DOMContentLoaded", () => {
       analysisBlock.textContent = data.structured_analysis || "Structured Analysis\n- Not available";
       output.appendChild(analysisBlock);
 
+      const specBlock = document.createElement("div");
+      specBlock.className = "result-block";
+      specBlock.textContent = `Character Spec\n${JSON.stringify(
+        data.character_spec || {},
+        null,
+        2
+      )}`;
+      output.appendChild(specBlock);
+
       const promptBlock = document.createElement("div");
       promptBlock.className = "result-block";
       promptBlock.textContent = `Final Prompt\n${data.final_prompt || "Not available"}`;

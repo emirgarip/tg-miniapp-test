@@ -1,27 +1,80 @@
 const OpenAI = require("openai");
 const { getDb } = require("../../backend/db/mongo");
-const { SYSTEM_PROMPT } = require("./prompt-config");
+const {
+  EXTRACTION_SYSTEM_PROMPT,
+  DEFAULT_CHARACTER_SPEC,
+  NEGATIVE_PROMPT,
+} = require("./prompt-config");
 
 const MODEL = "gpt-4.1-mini";
-const REQUIRED_NEGATIVE_PROMPT =
-  "Negative prompt: no text, no watermark, no distortion, no extra limbs, no unnatural anatomy, no blur";
 
-function normalizeFinalPrompt(rawPrompt) {
-  let prompt = (rawPrompt || "").trim();
-  if (!prompt) return prompt;
+function firstJsonObject(text) {
+  const s = String(text || "");
+  const start = s.indexOf("{");
+  const end = s.lastIndexOf("}");
+  if (start === -1 || end === -1 || end <= start) return null;
+  try {
+    return JSON.parse(s.slice(start, end + 1));
+  } catch (_) {
+    return null;
+  }
+}
 
-  // Ensure required negative prompt block exists.
-  if (!/negative prompt:/i.test(prompt)) {
-    prompt = `${prompt}\n${REQUIRED_NEGATIVE_PROMPT}`;
+function mergeSpec(rawSpec = {}) {
+  const spec = { ...DEFAULT_CHARACTER_SPEC, ...rawSpec };
+
+  // Controlled body emphasis mapping.
+  const strength = String(spec.body_emphasis_strength || "medium").toLowerCase();
+  if (!["low", "medium", "high"].includes(strength)) {
+    spec.body_emphasis_strength = "medium";
+  } else {
+    spec.body_emphasis_strength = strength;
   }
 
-  // If output is too short, append a deterministic realism/camera enrichment block.
-  if (prompt.length < 900) {
-    prompt +=
-      "\nRendering quality and realism notes: photorealistic skin texture with visible pores and natural micro-contrast, individual hair strands with realistic flyaways, physically plausible shadows and highlights, natural color grading with high dynamic range, subtle tonal roll-off, and clean cinematic realism suitable for modern image-generation models. Camera and composition: upper-body portrait framing with an 85mm portrait lens feel, shallow cinematic depth of field, subject in sharp focus with smooth background blur, perspective-consistent geometry, and clear foreground/background separation.";
+  if (spec.body_emphasis_strength === "high") {
+    spec.body =
+      "well-proportioned silhouette with emphasized yet believable curves, balanced hips and legs, graceful body lines, and realistic anatomy";
+  } else if (spec.body_emphasis_strength === "medium") {
+    spec.body =
+      "balanced curvy proportions with controlled emphasis on silhouette, natural posture, and believable anatomy";
+  } else {
+    spec.body =
+      "natural balanced proportions, subtle silhouette definition, and realistic anatomy";
   }
 
-  return prompt;
+  return spec;
+}
+
+function composeFinalPrompt(spec) {
+  return [
+    `Subject overview: ${spec.gender}, ${spec.framing}, realistic editorial portrait intent with clear visual identity.`,
+    `Age anchor: adult subject in the ${spec.age_range} range, explicitly adult with policy-safe characterization.`,
+    `Face details: ${spec.face}.`,
+    `Hair: ${spec.hair}.`,
+    `Eyes and expression: ${spec.eyes}; ${spec.expression}.`,
+    `Body and posture: ${spec.body}; ${spec.pose}.`,
+    `Clothing and styling: ${spec.clothing}.`,
+    `Environment and background: ${spec.environment}.`,
+    `Lighting: ${spec.lighting}.`,
+    `Camera and composition: ${spec.camera}.`,
+    `Rendering quality and realism notes: ${spec.realism_quality}.`,
+    `Negative prompt: ${NEGATIVE_PROMPT}.`,
+  ].join("\n");
+}
+
+function composeStructuredAnalysis(raw, spec) {
+  const a = raw?.structured_analysis || {};
+  return [
+    "Structured Analysis",
+    `- Input language: ${a.input_language || raw?.input_language || "unknown"}`,
+    `- Subject type: ${a.subject_type || raw?.subject_type || "adult portrait subject"}`,
+    `- Face details: ${a.face_details || spec.face}`,
+    `- Body details: ${a.body_details || spec.body}`,
+    `- Clothing/styling: ${a.clothing_styling || spec.clothing}`,
+    `- Scene/environment: ${a.scene_environment || spec.environment}`,
+    `- Visual style: ${a.visual_style || spec.realism_quality}`,
+    `- Safety adjustments applied: ${a.safety_adjustments_applied || spec.safety_adjustments || "none"}`,
+  ].join("\n");
 }
 
 module.exports = async (req, res) => {
@@ -46,22 +99,28 @@ module.exports = async (req, res) => {
 
     const response = await client.responses.create({
       model: MODEL,
-      instructions: SYSTEM_PROMPT,
+      instructions: EXTRACTION_SYSTEM_PROMPT,
       input: inputText,
     });
 
     const output = (response.output_text || "").trim();
     const latencyMs = Date.now() - startedAt;
 
-    const finalPromptMarker = "Final Prompt";
-    const markerIndex = output.indexOf(finalPromptMarker);
-    const finalPrompt =
-      markerIndex >= 0
-        ? output.slice(markerIndex + finalPromptMarker.length).trim()
-        : output;
-    const normalizedFinalPrompt = normalizeFinalPrompt(finalPrompt);
-    const structuredAnalysis =
-      markerIndex >= 0 ? output.slice(0, markerIndex).trim() : "Structured Analysis\n- Not available";
+    const parsed = firstJsonObject(output);
+    if (!parsed) {
+      throw new Error("Model did not return valid JSON for character spec extraction.");
+    }
+
+    const refusal =
+      !!parsed.refusal ||
+      !!parsed?.safety_flags?.minor_or_ambiguous_underage ||
+      !!parsed?.safety_flags?.illegal_or_exploitative;
+
+    const mergedSpec = mergeSpec(parsed.character_spec || {});
+    const structuredAnalysis = composeStructuredAnalysis(parsed, mergedSpec);
+    const finalPrompt = refusal
+      ? "Request refused for safety reasons: the input implies a minor/ambiguous underage or illegal/exploitative context. Please provide a clearly adult, policy-safe request."
+      : composeFinalPrompt(mergedSpec);
 
     const db = await getDb();
     await db.collection("ai_logs").insertOne({
@@ -78,8 +137,9 @@ module.exports = async (req, res) => {
       model: MODEL,
       type: "prompt_generation",
       structured_analysis: structuredAnalysis,
-      final_prompt: normalizedFinalPrompt,
-      prompt: normalizedFinalPrompt,
+      character_spec: mergedSpec,
+      final_prompt: finalPrompt,
+      prompt: finalPrompt,
       latency_ms: latencyMs,
     });
   } catch (err) {
