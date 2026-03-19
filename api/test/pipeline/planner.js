@@ -1,41 +1,50 @@
 // STEP C — Visual Planning
 // Deterministic logic only. No LLM calls.
 //
-// Priority order for framing decisions:
-//   1. User-specified body area emphasis (hips, legs, physique) — HIGHEST PRIORITY
-//   2. Clothing that requires full visibility (bikini, dress, etc.)
-//   3. Body emphasis strength (high = full-body)
-//   4. Pose signals (standing, full-body)
-//   5. Default: face-and-upper-body
+// Inputs:
+//   spec           — normalized attribute spec from normalizer
+//   interpretation — semantic intent categories + confidence from interpreter
 //
-// This ensures user intent drives framing, not model defaults.
+// Framing priority order (highest wins):
+//   1. High/medium-confidence focus regions that require lower-body visibility
+//   2. Interpretation composition_need = body_first
+//   3. Clothing visibility need (bikini, dress → show outfit)
+//   4. Normalizer emphasis targets (regex-derived, always applied)
+//   5. Body emphasis strength (high → three-quarter minimum)
+//   6. Pose intent from interpretation (if high/medium confidence)
+//   7. Default: portrait framing
+
+const { regionsAtConfidence } = require("./interpreter");
 
 // ─── framing presets ─────────────────────────────────────────────────────────
 
 const FRAMING = {
   portrait: {
     label: "face-and-upper-body",
-    strategy: "mid-torso portrait framing emphasizing face, expression, and upper-body details",
+    strategy:
+      "mid-torso portrait framing emphasizing face, expression, and upper-body details",
     camera:
       "mid-torso portrait framing, 85mm portrait lens feel, shallow cinematic depth of field, sharp subject focus with smoothly blurred background",
   },
   threeQuarter: {
     label: "three-quarter-body",
-    strategy: "three-quarter body framing to show posture, hips, waist line, and upper legs alongside scene context",
+    strategy:
+      "three-quarter body framing to show posture, hips, waist line, and upper legs alongside scene context",
     camera:
       "three-quarter body framing, 70mm-equivalent lens feel, shallow depth of field, sharp subject with naturally receding background",
   },
   fullBody: {
     label: "full-body",
-    strategy: "full-body framing to show the complete silhouette, leg line, proportions, and environmental context",
+    strategy:
+      "full-body framing to show the complete silhouette, leg line, proportions, and environmental context",
     camera:
       "full-body vertical framing, 50mm-equivalent natural perspective, moderate depth of field, sharp subject clarity with soft environmental separation",
   },
 };
 
-// ─── pose suggestions keyed by emphasis target ───────────────────────────────
+// ─── pose templates keyed by emphasis / region ───────────────────────────────
 
-const POSE_BY_TARGET = {
+const POSE_TEMPLATES = {
   hips:
     "slight three-quarter body turn with one hip angled toward the camera, weight shifted to one leg, relaxed shoulder line — reveals hip line and waist definition clearly",
   legs:
@@ -45,83 +54,157 @@ const POSE_BY_TARGET = {
   waist:
     "three-quarter turn with torso slightly angled, arms relaxed at sides or one hand near hip — emphasizes waist definition and body line",
   chest:
-    "upright forward-facing pose with natural shoulder relaxation and slight chest openness — shows upper body clearly without forced stance",
+    "upright forward-facing pose with natural shoulder relaxation and slight chest openness — shows upper body clearly",
   shoulders:
     "upright posture with open shoulder line, slight turn away from camera — emphasizes shoulder width and upper body frame",
+  full_body:
+    "confident full-body stance with natural weight distribution and clean vertical posture — presents silhouette clearly",
+  one_leg_weight_shift:
+    "relaxed standing pose with weight on one leg, hip naturally offset, shoulder line slightly angled — casual but composed stance",
+  hip_accentuating:
+    "three-quarter turn with weight shifted to one hip, natural lean and relaxed arms — emphasizes hip and waist line",
 };
 
-// ─── composition goal builders ───────────────────────────────────────────────
+// ─── composition goal builder ─────────────────────────────────────────────────
 
-function buildCompositionGoal(framing, targets, envType, needsClothing) {
+function buildCompositionGoal(chosenFraming, targets, interp, envType) {
   const t = String(envType || "").toLowerCase();
-  const isInterior = t.includes("hotel") || t.includes("room") || t.includes("interior") || t.includes("bedroom");
-  const isOutdoor = t.includes("beach") || t.includes("outdoor") || t.includes("city") || t.includes("street");
-  const isStudio = t.includes("studio") || t === "";
+  const isInterior =
+    t.includes("hotel") || t.includes("room") || t.includes("interior") || t.includes("bedroom");
+  const isOutdoor =
+    t.includes("beach") || t.includes("outdoor") || t.includes("city") || t.includes("street");
 
-  const visibilityReqs = [];
-  if (targets.has("hips")) visibilityReqs.push("hips and waist line clearly visible and not cropped");
-  if (targets.has("legs")) visibilityReqs.push("full leg length visible from hip to foot without cropping");
-  if (targets.has("physique")) visibilityReqs.push("complete body silhouette visible");
-  if (targets.has("waist")) visibilityReqs.push("waist and midsection clearly visible");
-  if (targets.has("chest")) visibilityReqs.push("upper body and chest area clearly in frame");
-  if (needsClothing) visibilityReqs.push("full clothing item visible without cropping");
+  const visReqs = [];
+  if (targets.has("hips")) visReqs.push("hips and waist line clearly visible and not cropped");
+  if (targets.has("legs")) visReqs.push("full leg length visible from hip to foot");
+  if (targets.has("physique")) visReqs.push("complete body silhouette visible");
+  if (targets.has("waist")) visReqs.push("waist and midsection clearly visible");
+  if (targets.has("chest")) visReqs.push("upper body and chest area clearly in frame");
 
-  let envContext;
-  if (isInterior) {
-    envContext = "integrate warm interior depth and room context as background atmosphere";
-  } else if (isOutdoor) {
-    envContext = "integrate natural outdoor environment with horizon depth as scene context";
-  } else {
-    envContext = "clean editorial presentation with neutral background depth and deliberate negative space";
+  // Supplement from interpretation regions
+  const interpRegions = regionsAtConfidence(interp, "medium");
+  if (interpRegions.has("hips") && !targets.has("hips"))
+    visReqs.push("hips visible and not cropped");
+  if (interpRegions.has("legs") && !targets.has("legs"))
+    visReqs.push("leg line clearly in frame");
+  if (interpRegions.has("full_body") && !targets.has("physique"))
+    visReqs.push("complete body silhouette visible");
+
+  const clothingNeed = interp?.clothing_visibility_need?.value;
+  if (clothingNeed === "full_outfit") visReqs.push("full clothing item visible without cropping");
+  else if (clothingNeed === "styling_detail") visReqs.push("clothing styling details clearly visible");
+
+  const envContextPart = isInterior
+    ? "integrate warm interior depth and room context as background atmosphere"
+    : isOutdoor
+    ? "integrate natural outdoor environment with horizon depth as scene context"
+    : "clean editorial background with neutral depth and deliberate negative space";
+
+  if (visReqs.length > 0) {
+    return `Ensure ${visReqs.join("; ")}. ${envContextPart}.`;
   }
 
-  if (visibilityReqs.length > 0) {
-    return `Ensure ${visibilityReqs.join("; ")}. ${envContext}.`;
+  const compNeed = interp?.composition_need;
+  if (compNeed?.confidence === "high" || compNeed?.confidence === "medium") {
+    if (compNeed.value === "environment_first") {
+      return `Environment provides significant contextual atmosphere — allow visible scene depth and subject integration. ${envContextPart}.`;
+    }
+    if (compNeed.value === "face_first") {
+      return `Face and expression are the primary visual focus — composition centers on the subject's face with strong eye contact and natural framing. ${envContextPart}.`;
+    }
   }
 
-  if (isStudio) {
-    return "Clean editorial studio presentation with strong subject clarity, neutral background depth, and deliberate negative space.";
-  }
-  return `Maintain clear subject-environment balance with coherent scene depth. ${envContext}.`;
+  return `Maintain clear subject-environment balance with coherent scene depth. ${envContextPart}.`;
 }
 
 // ─── main plan function ──────────────────────────────────────────────────────
 
-function plan(spec) {
-  const targets = spec._emphasisTargets || new Set();
-  const isUserEmphasis = !!spec._bodyEmphasisIsUserDriven;
-  const emphasisStrength = String(spec._bodyEmphasisStrength || "medium").toLowerCase();
-  const needsClothing = !!spec._needsFullClothingVisibility;
+function plan(spec, interpretation = {}) {
+  // Signals from normalizer
+  const normTargets = spec._emphasisTargets || new Set();
+  const isUserBodyEmphasis = !!spec._bodyEmphasisIsUserDriven;
+  const normStrength = String(spec._bodyEmphasisStrength || "medium").toLowerCase();
+  const needsFullClothing = !!spec._needsFullClothingVisibility;
   const clothingVal = String(spec.clothing?.value || "").toLowerCase();
+  const poseIsUser = spec.pose?.source === "user";
   const poseVal = String(spec.pose?.value || "").toLowerCase();
   const envType = spec._envType || "";
 
-  // ─── STEP 1: Pick framing (priority order) ─────────────────────────────────
+  // Signals from interpreter
+  const interpRegionsHigh = regionsAtConfidence(interpretation, "high");
+  const interpRegionsMed = regionsAtConfidence(interpretation, "medium");
+  const poseIntent = interpretation.pose_intent || { value: "unclear", confidence: "low" };
+  const compNeed = interpretation.composition_need || { value: "balanced", confidence: "low" };
+  const clothingVisibility = interpretation.clothing_visibility_need || {
+    value: "not_specified",
+    confidence: "low",
+  };
+
+  // Merged lower-body target set (normalizer + high/medium interpretation)
+  const lowerBodyFromInterp = [...interpRegionsMed].filter((r) =>
+    ["hips", "legs", "waist", "full_body"].includes(r)
+  );
+  const allLowerBodyTargets = new Set([
+    ...[...normTargets].filter((t) =>
+      ["hips", "legs", "physique", "waist"].includes(t)
+    ),
+    ...lowerBodyFromInterp,
+  ]);
+
+  // ─── STEP 1: Choose framing ───────────────────────────────────────────────
 
   let chosenFraming;
   let framingReason;
 
-  const hasLowerBodyTarget = targets.has("hips") || targets.has("legs") || targets.has("physique") || targets.has("waist");
+  const hasInterpFullBody = interpRegionsHigh.has("full_body") || interpRegionsMed.has("full_body");
+  const hasInterpLegs = interpRegionsHigh.has("legs") || interpRegionsMed.has("legs");
+  const hasInterpHips = interpRegionsHigh.has("hips") || interpRegionsMed.has("hips");
 
-  if (isUserEmphasis && (targets.has("legs") || targets.has("physique"))) {
-    // Legs or full physique requested by user → full body required
+  if (
+    (isUserBodyEmphasis && (normTargets.has("legs") || normTargets.has("physique"))) ||
+    hasInterpFullBody ||
+    hasInterpLegs
+  ) {
     chosenFraming = FRAMING.fullBody;
-    framingReason = `user emphasized ${[...targets].filter(t => ["legs","physique"].includes(t)).join(", ")}`;
-  } else if (isUserEmphasis && targets.has("hips")) {
-    // Hips requested by user → three-quarter minimum; full if also legs
+    const reasons = [];
+    if (isUserBodyEmphasis && normTargets.has("legs")) reasons.push("user emphasized legs");
+    if (isUserBodyEmphasis && normTargets.has("physique")) reasons.push("user emphasized physique");
+    if (hasInterpFullBody) reasons.push("interpretation: full_body region");
+    if (hasInterpLegs) reasons.push("interpretation: legs region");
+    framingReason = reasons.join(", ");
+  } else if (
+    (isUserBodyEmphasis && normTargets.has("hips")) ||
+    hasInterpHips ||
+    (isUserBodyEmphasis && normTargets.has("waist")) ||
+    interpRegionsMed.has("waist")
+  ) {
     chosenFraming = FRAMING.threeQuarter;
-    framingReason = "user emphasized hips";
-  } else if (isUserEmphasis && targets.has("waist")) {
-    chosenFraming = FRAMING.threeQuarter;
-    framingReason = "user emphasized waist";
-  } else if (needsClothing) {
-    // Clothing type requires full visibility (dress, bikini, etc.)
+    const reasons = [];
+    if (isUserBodyEmphasis && normTargets.has("hips")) reasons.push("user emphasized hips");
+    if (hasInterpHips) reasons.push("interpretation: hips region");
+    if (isUserBodyEmphasis && normTargets.has("waist")) reasons.push("user emphasized waist");
+    if (interpRegionsMed.has("waist")) reasons.push("interpretation: waist region");
+    framingReason = reasons.join(", ");
+  } else if (
+    clothingVisibility.value === "full_outfit" &&
+    (clothingVisibility.confidence === "high" || clothingVisibility.confidence === "medium")
+  ) {
     chosenFraming = clothingVal.includes("bikini") || clothingVal.includes("swimsuit")
       ? FRAMING.fullBody
       : FRAMING.threeQuarter;
-    framingReason = `clothing type (${spec.clothing?.value}) requires full outfit visibility`;
-  } else if (isUserEmphasis && emphasisStrength === "high") {
-    // High body emphasis from user, no specific target → three-quarter
+    framingReason = `clothing visibility need: ${clothingVisibility.value} (${clothingVisibility.confidence} confidence)`;
+  } else if (needsFullClothing) {
+    chosenFraming = clothingVal.includes("bikini") || clothingVal.includes("swimsuit")
+      ? FRAMING.fullBody
+      : FRAMING.threeQuarter;
+    framingReason = "clothing type requires full outfit visibility";
+  } else if (
+    compNeed.value === "body_first" &&
+    (compNeed.confidence === "high" || compNeed.confidence === "medium")
+  ) {
+    chosenFraming = FRAMING.threeQuarter;
+    framingReason = `interpretation: composition_need = body_first (${compNeed.confidence})`;
+  } else if (isUserBodyEmphasis && normStrength === "high") {
     chosenFraming = FRAMING.threeQuarter;
     framingReason = "high body emphasis strength from user";
   } else if (
@@ -132,28 +215,73 @@ function plan(spec) {
   ) {
     chosenFraming = FRAMING.threeQuarter;
     framingReason = "standing pose or full-length clothing";
+  } else if (
+    poseIntent.value === "standing" &&
+    poseIntent.confidence === "high"
+  ) {
+    chosenFraming = FRAMING.threeQuarter;
+    framingReason = "interpretation: pose_intent = standing (high confidence)";
   } else {
-    // Default: portrait
     chosenFraming = FRAMING.portrait;
-    framingReason = "no specific body area emphasis detected";
+    framingReason = "no lower-body or body-first signal detected";
   }
 
-  // ─── STEP 2: Pose suggestion ───────────────────────────────────────────────
-  // Build a pose suggestion that supports the emphasized area.
-  // Only used by blockBuilder if user did NOT specify a pose.
+  // ─── STEP 2: Pose suggestion ──────────────────────────────────────────────
+  // Build a pose that supports the user's emphasis.
+  // Priority: normalizer targets > interpretation pose_intent > default.
+  // Only used when user did not provide a pose.
   let pose_suggestion = null;
-  for (const target of ["hips", "legs", "physique", "waist", "chest", "shoulders"]) {
-    if (targets.has(target)) {
-      pose_suggestion = POSE_BY_TARGET[target];
-      break;
+  let poseReason = "default";
+
+  if (!poseIsUser) {
+    // From normalizer targets (explicit body area)
+    for (const target of ["hips", "legs", "physique", "waist", "chest", "shoulders"]) {
+      if (normTargets.has(target) && POSE_TEMPLATES[target]) {
+        pose_suggestion = POSE_TEMPLATES[target];
+        poseReason = `normalizer target: ${target}`;
+        break;
+      }
     }
-  }
-  if (!pose_suggestion && needsClothing) {
-    pose_suggestion = "confident full-body stance that shows the complete outfit naturally";
+
+    // From interpretation pose_intent (if medium+ confidence)
+    if (
+      !pose_suggestion &&
+      poseIntent.value !== "unclear" &&
+      (poseIntent.confidence === "high" || poseIntent.confidence === "medium")
+    ) {
+      pose_suggestion = POSE_TEMPLATES[poseIntent.value] || null;
+      poseReason = `interpretation: pose_intent = ${poseIntent.value} (${poseIntent.confidence})`;
+    }
+
+    // From interpretation focus regions
+    if (!pose_suggestion) {
+      if (interpRegionsMed.has("full_body")) {
+        pose_suggestion = POSE_TEMPLATES["full_body"];
+        poseReason = "interpretation: full_body region";
+      } else if (interpRegionsMed.has("hips")) {
+        pose_suggestion = POSE_TEMPLATES["hips"];
+        poseReason = "interpretation: hips region";
+      } else if (interpRegionsMed.has("legs")) {
+        pose_suggestion = POSE_TEMPLATES["legs"];
+        poseReason = "interpretation: legs region";
+      }
+    }
+
+    // Clothing fallback
+    if (!pose_suggestion && needsFullClothing) {
+      pose_suggestion = "confident full-body stance that shows the complete outfit naturally";
+      poseReason = "clothing needs full visibility";
+    }
   }
 
   // ─── STEP 3: Composition goal ─────────────────────────────────────────────
-  const composition_goal = buildCompositionGoal(chosenFraming, targets, envType, needsClothing);
+
+  const composition_goal = buildCompositionGoal(
+    chosenFraming,
+    allLowerBodyTargets,
+    interpretation,
+    envType
+  );
 
   return {
     subject_emphasis: chosenFraming.label,
@@ -162,7 +290,9 @@ function plan(spec) {
     composition_goal,
     camera_preset: chosenFraming.camera,
     pose_suggestion,
-    emphasis_targets: [...targets],
+    pose_reason: poseReason,
+    emphasis_targets: [...normTargets],
+    interpretation_regions: [...interpRegionsMed].map((r) => r),
   };
 }
 

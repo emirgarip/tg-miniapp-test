@@ -32,9 +32,13 @@ document.addEventListener("DOMContentLoaded", () => {
     copyBtn.hidden = true;
   }
 
-  function makeSection(title, content, accent) {
+  // variant: undefined | "accent" | "interp"
+  function makeSection(title, content, accent, variant) {
     const wrap = document.createElement("div");
-    wrap.className = "result-block" + (accent ? " result-block--accent" : "");
+    let cls = "result-block";
+    if (accent) cls += " result-block--accent";
+    if (variant === "interp") cls += " result-block--interp";
+    wrap.className = cls;
 
     const h = document.createElement("div");
     h.className = "result-block__title";
@@ -102,6 +106,8 @@ document.addEventListener("DOMContentLoaded", () => {
       `Framing strategy    : ${vp.framing_strategy}`,
       `Framing reason      : ${vp.framing_reason || "—"}`,
       `Emphasis targets    : ${(vp.emphasis_targets || []).join(", ") || "none"}`,
+      `Interp. regions     : ${(vp.interpretation_regions || []).join(", ") || "none"}`,
+      `Pose source         : ${vp.pose_reason || "default"}`,
       `Pose suggestion     : ${vp.pose_suggestion || "default"}`,
       `Composition goal    : ${vp.composition_goal}`,
     ];
@@ -167,7 +173,14 @@ document.addEventListener("DOMContentLoaded", () => {
         makeSection("Structured Analysis", data.structured_analysis || "Not available")
       );
 
-      // B. Extracted Attributes (user-provided)
+      // B. Semantic Interpretation (new)
+      if (data.semantic_interpretation) {
+        output.appendChild(
+          makeSection("Semantic Interpretation", data.semantic_interpretation, false, "interp")
+        );
+      }
+
+      // C. Extracted Attributes (user-provided)
       const extracted = data.extracted_attributes || [];
       output.appendChild(
         makeSection(
@@ -176,7 +189,7 @@ document.addEventListener("DOMContentLoaded", () => {
         )
       );
 
-      // C. Auto-filled / Normalized Attributes
+      // D. Auto-filled / Normalized Attributes
       const auto = data.auto_filled_attributes || [];
       output.appendChild(
         makeSection(
@@ -185,22 +198,22 @@ document.addEventListener("DOMContentLoaded", () => {
         )
       );
 
-      // D. Visual Planning
+      // E. Visual Planning
       output.appendChild(
         makeSection("Visual Planning", formatPlanning(data.visual_planning))
       );
 
-      // E. Character Spec
+      // F. Character Spec
       output.appendChild(
         makeSection("Character Spec", formatSpec(data.character_spec))
       );
 
-      // F. Prompt Blocks
+      // G. Prompt Blocks
       if (data.prompt_blocks) {
         output.appendChild(makeBlocksSection(data.prompt_blocks));
       }
 
-      // G. Final Prompt
+      // H. Final Prompt
       output.appendChild(
         makeSection("Final Prompt", data.final_prompt || "Not available", true)
       );

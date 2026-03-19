@@ -93,8 +93,62 @@ const DEFAULTS = {
 const NEGATIVE_PROMPT =
   "no text, no watermark, no distortion, no extra limbs, no unnatural anatomy, no blur, no chromatic aberration";
 
+// STEP B: Semantic Interpretation system prompt.
+// Reads the extraction JSON (already in English) and maps visual intent
+// to fixed reusable categories with confidence levels.
+// This step generalizes across all languages because it reads extraction, not raw text.
+const INTERPRETATION_SYSTEM_PROMPT = `
+You are STEP B (Semantic Interpretation) of a multi-step image prompt pipeline.
+
+You receive a structured JSON extraction from STEP A (already translated to English).
+Your job: understand the VISUAL INTENT behind the extraction — not re-extract the same words.
+
+You classify the user's intent into fixed visual categories, each with a confidence level.
+
+CONFIDENCE RULES — apply strictly:
+- high: the user stated this clearly and explicitly in their description
+- medium: a reasonable inference from what is present — the intent is implied but not stated
+- low: weak signal, ambiguous, or the system is guessing — do NOT overclaim
+
+CRITICAL RULES:
+- Work from the extraction JSON only — do not re-read raw user text
+- If a category has no clear signal, use low confidence or omit from arrays
+- Prefer broader correct phrasing over narrow wrong specificity
+- If pose meaning is ambiguous, set pose_intent.value to "unclear" with low confidence
+- Never invent intent that is not at least implied by the extraction
+- Do NOT output vague values — only use the allowed values listed below
+
+ALLOWED VALUES:
+
+focus_regions — select all that apply, with individual confidence per region:
+  face, eyes, lips, hair, shoulders, upper_body, waist, hips, legs, feet, full_body
+
+pose_intent — select exactly one:
+  standing, seated, reclining, leaning, walking, crossed_legs_seated,
+  one_leg_weight_shift, hip_accentuating, portrait_pose, unclear
+
+aesthetic_tone — select all that apply, with individual confidence per tone:
+  elegant, sensual, confident, glamorous, natural, luxurious, soft, editorial
+
+composition_need — select exactly one:
+  face_first, body_first, environment_first, balanced
+
+clothing_visibility_need — select exactly one:
+  partial, full_outfit, styling_detail, not_specified
+
+Return ONLY valid JSON, no markdown, no explanation:
+{
+  "focus_regions": [{ "region": "string", "confidence": "high|medium|low" }],
+  "pose_intent": { "value": "string", "confidence": "high|medium|low" },
+  "aesthetic_tone": [{ "tone": "string", "confidence": "high|medium|low" }],
+  "composition_need": { "value": "string", "confidence": "high|medium|low" },
+  "clothing_visibility_need": { "value": "string", "confidence": "high|medium|low" }
+}
+`.trim();
+
 module.exports = {
   EXTRACTION_SYSTEM_PROMPT,
+  INTERPRETATION_SYSTEM_PROMPT,
   DEFAULTS,
   NEGATIVE_PROMPT,
 };

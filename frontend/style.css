@@ -131,6 +131,15 @@ body {
   color: #1d4ed8;
 }
 
+.result-block--interp {
+  border-color: #d8b4fe;
+  background: #faf5ff;
+}
+
+.result-block--interp .result-block__title {
+  color: #7c3aed;
+}
+
 .result-block__body {
   font-size: 0.88rem;
   line-height: 1.65;
