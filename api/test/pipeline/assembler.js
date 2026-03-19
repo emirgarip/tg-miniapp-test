@@ -50,6 +50,9 @@ function buildStructuredAnalysis(extraction, spec, plan) {
     `Visual Planning`,
     `- Subject emphasis    : ${plan.subject_emphasis}`,
     `- Framing strategy    : ${plan.framing_strategy}`,
+    `- Framing reason      : ${plan.framing_reason}`,
+    `- Emphasis targets    : ${(plan.emphasis_targets || []).join(", ") || "none"}`,
+    `- Pose suggestion     : ${plan.pose_suggestion || "default"}`,
     `- Composition goal    : ${plan.composition_goal}`,
   ].join("\n");
 }

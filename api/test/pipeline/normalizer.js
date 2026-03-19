@@ -62,6 +62,39 @@ function resolveBodyEmphasisStrength(raw) {
   return "medium";
 }
 
+// Detect which specific body areas the user explicitly mentioned.
+// Returns a Set of named targets. Drives framing decisions in the planner.
+function detectEmphasisTargets(rawEmphasis, rawBodyType) {
+  const targets = new Set();
+  const combined = `${rawEmphasis || ""} ${rawBodyType || ""}`.toLowerCase();
+
+  if (/\bhip(s)?\b/.test(combined)) targets.add("hips");
+  if (/\bleg(s)?\b|\bthigh(s)?\b/.test(combined)) targets.add("legs");
+  if (/\bbutt(ocks)?\b|\bass\b|\bbehind\b|\bbottom\b/.test(combined)) targets.add("hips"); // normalize to hips
+  if (/\bwaist\b/.test(combined)) targets.add("waist");
+  if (/\bphysique\b|\bfigure\b|\bbody shape\b|\bfull.?body\b/.test(combined)) targets.add("physique");
+  if (/\bchest\b|\bbust\b|\bbreasts?\b/.test(combined)) targets.add("chest");
+  if (/\bshoulder(s)?\b/.test(combined)) targets.add("shoulders");
+  if (/\bface\b|\beyes?\b|\blook(s)?\b/.test(combined)) targets.add("face");
+
+  return targets;
+}
+
+// Detect whether clothing type requires the full outfit to be visible.
+function clothingNeedsFullVisibility(clothingVal) {
+  const s = String(clothingVal || "").toLowerCase();
+  return (
+    s.includes("bikini") ||
+    s.includes("swimsuit") ||
+    s.includes("one-piece") ||
+    s.includes("dress") ||
+    s.includes("gown") ||
+    s.includes("skirt") ||
+    s.includes("shorts") ||
+    s.includes("lingerie")
+  );
+}
+
 // ─── lighting from environment ───────────────────────────────────────────────
 
 function defaultLightingForEnv(envType) {
@@ -175,6 +208,17 @@ function normalize(extracted = {}) {
     pick(extracted.safety_adjustments, DEFAULTS.safety_adjustments)
   );
 
+  // Detect specific emphasis targets from raw user body text (before normalization).
+  const rawBodyEmphasisText = extracted.body?.emphasis || null;
+  const rawBodyTypeText = extracted.body?.type || null;
+  const emphasisTargets = rawBodyEmphasis
+    ? detectEmphasisTargets(rawBodyEmphasisText, rawBodyTypeText)
+    : new Set();
+
+  const needsFullClothingVisibility = clothingNeedsFullVisibility(
+    extracted.clothing || ""
+  );
+
   const spec = {
     gender,
     age_range,
@@ -190,7 +234,11 @@ function normalize(extracted = {}) {
     camera: null, // will be filled by planner
     style_cues: pick(extracted.style_cues, DEFAULTS.style_cues),
     safety_adjustments: safetyAdjustments,
+    // Internal planner signals — not sent to frontend display
     _bodyEmphasisStrength: emphasisStrength,
+    _bodyEmphasisIsUserDriven: rawBodyEmphasis !== null,
+    _emphasisTargets: emphasisTargets,          // Set<string>
+    _needsFullClothingVisibility: needsFullClothingVisibility,
     _envType: envType.value,
   };
 

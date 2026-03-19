@@ -56,8 +56,30 @@ function buildBlocks(spec, plan) {
   // ── 6. body ─────────────────────────────────────────────────────────────────
   const bodyType = v(spec.body.type);
   const bodyEmphasis = v(spec.body.emphasis);
+  const emphasisTargets = plan.emphasis_targets || [];
+
+  // Build target-specific visibility note so the model knows what must be in frame.
+  let bodyVisibilityNote = "";
+  if (emphasisTargets.includes("hips")) {
+    bodyVisibilityNote =
+      "Hips and waist are the primary visual anchor — they must be clearly visible and centrally composed. " +
+      "Hip-to-waist transition is rendered with natural curve and realistic weight distribution.";
+  } else if (emphasisTargets.includes("legs")) {
+    bodyVisibilityNote =
+      "Leg line is the primary visual element — full leg length is visible from hip to foot. " +
+      "Leg shape shows natural muscle definition, realistic skin texture, and anatomically correct proportions.";
+  } else if (emphasisTargets.includes("physique")) {
+    bodyVisibilityNote =
+      "The full body silhouette is the primary subject — proportions read clearly from head to toe. " +
+      "Figure presents balanced natural anatomy with controlled visual weight and realistic stance.";
+  } else if (emphasisTargets.includes("waist")) {
+    bodyVisibilityNote =
+      "Waist definition is the compositional focus — midsection is clearly in frame with natural narrowing and realistic torso line.";
+  }
+
   blocks.body =
     `${bodyType}. ${bodyEmphasis}. ` +
+    (bodyVisibilityNote ? `${bodyVisibilityNote} ` : "") +
     `Anatomy is believable and consistent — no exaggerated proportions unless explicitly intended. ` +
     `Silhouette reads clearly against the background with natural weight distribution and gravity-appropriate posture.`;
 
@@ -70,11 +92,17 @@ function buildBlocks(spec, plan) {
     `Clothing is styled with intentional composition, supporting the overall visual impression of the subject.`;
 
   // ── 8. pose ─────────────────────────────────────────────────────────────────
-  const poseVal = v(spec.pose);
+  // If the user specified a pose, use it. Otherwise use the planner's
+  // pose_suggestion (which is chosen to support the user's emphasis).
+  const poseIsUserDriven = spec.pose?.source === "user";
+  const poseVal = poseIsUserDriven
+    ? v(spec.pose)
+    : (plan.pose_suggestion || v(spec.pose));
+
   blocks.pose =
     `${poseVal}. ` +
     `Body language reads as natural and unforced — weight balanced, ` +
-    `shoulder line relaxed, and overall posture contributing to the visual composition goal: ${plan.composition_goal}.`;
+    `shoulder line relaxed, and overall posture supporting the composition goal: ${plan.composition_goal}`;
 
   // ── 9. environment ──────────────────────────────────────────────────────────
   const envType = v(spec.environment.type);

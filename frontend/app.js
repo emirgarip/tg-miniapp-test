@@ -97,11 +97,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function formatPlanning(vp) {
     if (!vp) return "Not available";
-    return [
+    const lines = [
       `Subject emphasis    : ${vp.subject_emphasis}`,
       `Framing strategy    : ${vp.framing_strategy}`,
+      `Framing reason      : ${vp.framing_reason || "—"}`,
+      `Emphasis targets    : ${(vp.emphasis_targets || []).join(", ") || "none"}`,
+      `Pose suggestion     : ${vp.pose_suggestion || "default"}`,
       `Composition goal    : ${vp.composition_goal}`,
-    ].join("\n");
+    ];
+    return lines.join("\n");
   }
 
   function formatSpec(spec) {
