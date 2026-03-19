@@ -3,7 +3,7 @@
 // Returns a validated extraction object; throws on invalid JSON or refusal.
 
 const OpenAI = require("openai");
-const { EXTRACTION_SYSTEM_PROMPT } = require("../prompt-config");
+const { EXTRACTION_SYSTEM_PROMPT } = require("./prompt-config");
 
 function firstJson(text) {
   const s = String(text || "");

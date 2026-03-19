@@ -3,7 +3,7 @@
 // Each block uses spec values as anchors with tone-aware descriptive expansion.
 // No LLM calls — structured template logic only.
 
-const { NEGATIVE_PROMPT } = require("../prompt-config");
+const { NEGATIVE_PROMPT } = require("./prompt-config");
 const { tonesAtConfidence, primaryTone } = require("./interpreter");
 
 function v(tagged) {

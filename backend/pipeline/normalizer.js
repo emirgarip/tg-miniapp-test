@@ -6,7 +6,7 @@
 //   4. Age is always normalized to numeric range strings.
 //   5. Body emphasis is controlled and never extreme by default.
 
-const { DEFAULTS } = require("../prompt-config");
+const { DEFAULTS } = require("./prompt-config");
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 

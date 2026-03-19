@@ -13,7 +13,7 @@
 // Output: visual intent categories with confidence — used by planner and blockBuilder
 
 const OpenAI = require("openai");
-const { INTERPRETATION_SYSTEM_PROMPT } = require("../prompt-config");
+const { INTERPRETATION_SYSTEM_PROMPT } = require("./prompt-config");
 
 // ─── allowed category values ────────────────────────────────────────────────
 

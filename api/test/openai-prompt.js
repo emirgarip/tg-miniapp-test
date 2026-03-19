@@ -9,12 +9,12 @@
 //   E. assemble()   — sync: join blocks in fixed order
 
 const { getDb } = require("../../backend/db/mongo");
-const { extract } = require("./pipeline/extractor");
-const { interpret } = require("./pipeline/interpreter");
-const { normalize } = require("./pipeline/normalizer");
-const { plan } = require("./pipeline/planner");
-const { buildBlocks } = require("./pipeline/blockBuilder");
-const { assemble, buildStructuredAnalysis, buildInterpretationSummary } = require("./pipeline/assembler");
+const { extract } = require("../../backend/pipeline/extractor");
+const { interpret } = require("../../backend/pipeline/interpreter");
+const { normalize } = require("../../backend/pipeline/normalizer");
+const { plan } = require("../../backend/pipeline/planner");
+const { buildBlocks } = require("../../backend/pipeline/blockBuilder");
+const { assemble, buildStructuredAnalysis, buildInterpretationSummary } = require("../../backend/pipeline/assembler");
 
 const MODEL = "gpt-4.1-mini";
 
