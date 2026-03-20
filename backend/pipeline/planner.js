@@ -45,6 +45,7 @@ const FRAMING = {
 // ─── pose templates keyed by emphasis / region ───────────────────────────────
 
 const POSE_TEMPLATES = {
+  // ── body-area driven ────────────────────────────────────────────────────────
   hips:
     "slight three-quarter body turn with one hip angled toward the camera, weight shifted to one leg, relaxed shoulder line — reveals hip line and waist definition clearly",
   legs:
@@ -58,11 +59,31 @@ const POSE_TEMPLATES = {
   shoulders:
     "upright posture with open shoulder line, slight turn away from camera — emphasizes shoulder width and upper body frame",
   full_body:
-    "confident full-body stance with natural weight distribution and clean vertical posture — presents silhouette clearly",
+    "confident full-body stance with natural weight distribution and clean vertical posture — presents complete silhouette clearly",
+
+  // ── interpretation pose_intent values ────────────────────────────────────────
+  standing:
+    "natural upright standing pose, weight balanced, shoulder line relaxed, and light directional posture — composed but not stiff",
+  seated:
+    "seated pose with upright posture, weight evenly supported, natural hand placement, and relaxed shoulder line",
+  reclining:
+    "reclining pose with body supported at a gentle angle, natural limb arrangement, and relaxed overall posture — body reads with ease and visual coherence",
+  leaning:
+    "leaning pose with weight transferred to one side, natural shoulder tilt, and relaxed body language — dynamic but composed",
+  walking:
+    "mid-stride walking pose with natural arm swing, weight in motion, and confident forward momentum — body reads as dynamic and fluid",
+  cross_legged_floor:
+    "seated cross-legged on the floor with both legs folded symmetrically in front, upright back, relaxed shoulders, and natural hand placement on knees or lap — grounded, composed floor pose",
+  legs_crossed_knee:
+    "seated with one leg elegantly crossed over the other at the knee, upright posture, slightly angled torso, relaxed hands — refined seated pose with visible leg line",
+  seated_side_angle:
+    "seated at a slight side angle to the camera, one hip slightly raised, relaxed posture, and natural arm placement — shows profile and body line without full frontal framing",
   one_leg_weight_shift:
     "relaxed standing pose with weight on one leg, hip naturally offset, shoulder line slightly angled — casual but composed stance",
   hip_accentuating:
     "three-quarter turn with weight shifted to one hip, natural lean and relaxed arms — emphasizes hip and waist line",
+  portrait_pose:
+    "composed upper-body portrait pose with natural shoulder angle, deliberate gaze, and relaxed facial muscles — clean and editorial",
 };
 
 // ─── composition goal builder ─────────────────────────────────────────────────
@@ -234,26 +255,41 @@ function plan(spec, interpretation = {}) {
   let poseReason = "default";
 
   if (!poseIsUser) {
-    // From normalizer targets (explicit body area)
-    for (const target of ["hips", "legs", "physique", "waist", "chest", "shoulders"]) {
-      if (normTargets.has(target) && POSE_TEMPLATES[target]) {
-        pose_suggestion = POSE_TEMPLATES[target];
-        poseReason = `normalizer target: ${target}`;
-        break;
+    // Priority 1: HIGH-confidence specific pose from interpreter (most precise signal).
+    // e.g. user clearly described "sitting cross-legged on the floor" → preserve exactly.
+    if (
+      poseIntent.value !== "unclear" &&
+      poseIntent.confidence === "high" &&
+      POSE_TEMPLATES[poseIntent.value]
+    ) {
+      pose_suggestion = POSE_TEMPLATES[poseIntent.value];
+      poseReason = `interpretation: pose_intent = ${poseIntent.value} (HIGH — used as primary)`;
+    }
+
+    // Priority 2: Normalizer body-area targets (user explicitly mentioned a body area).
+    // Only applies when no high-confidence pose intent was found.
+    if (!pose_suggestion) {
+      for (const target of ["hips", "legs", "physique", "waist", "chest", "shoulders"]) {
+        if (normTargets.has(target) && POSE_TEMPLATES[target]) {
+          pose_suggestion = POSE_TEMPLATES[target];
+          poseReason = `normalizer target: ${target}`;
+          break;
+        }
       }
     }
 
-    // From interpretation pose_intent (if medium+ confidence)
+    // Priority 3: MEDIUM-confidence pose from interpreter.
     if (
       !pose_suggestion &&
       poseIntent.value !== "unclear" &&
-      (poseIntent.confidence === "high" || poseIntent.confidence === "medium")
+      poseIntent.confidence === "medium" &&
+      POSE_TEMPLATES[poseIntent.value]
     ) {
-      pose_suggestion = POSE_TEMPLATES[poseIntent.value] || null;
-      poseReason = `interpretation: pose_intent = ${poseIntent.value} (${poseIntent.confidence})`;
+      pose_suggestion = POSE_TEMPLATES[poseIntent.value];
+      poseReason = `interpretation: pose_intent = ${poseIntent.value} (medium)`;
     }
 
-    // From interpretation focus regions
+    // Priority 4: Interpretation focus regions.
     if (!pose_suggestion) {
       if (interpRegionsMed.has("full_body")) {
         pose_suggestion = POSE_TEMPLATES["full_body"];
@@ -267,7 +303,7 @@ function plan(spec, interpretation = {}) {
       }
     }
 
-    // Clothing fallback
+    // Priority 5: Clothing fallback.
     if (!pose_suggestion && needsFullClothing) {
       pose_suggestion = "confident full-body stance that shows the complete outfit naturally";
       poseReason = "clothing needs full visibility";
@@ -293,6 +329,9 @@ function plan(spec, interpretation = {}) {
     pose_reason: poseReason,
     emphasis_targets: [...normTargets],
     interpretation_regions: [...interpRegionsMed].map((r) => r),
+    // surfaced for assembler display
+    _poseIntentValue: poseIntent.value,
+    _poseIntentConfidence: poseIntent.confidence,
   };
 }
 

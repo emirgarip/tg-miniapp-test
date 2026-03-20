@@ -91,7 +91,8 @@ const DEFAULTS = {
 };
 
 const NEGATIVE_PROMPT =
-  "no text, no watermark, no distortion, no extra limbs, no unnatural anatomy, no blur, no chromatic aberration";
+  "no text, no watermark, no distortion, no extra limbs, no unnatural anatomy, no blur, " +
+  "no chromatic aberration, no plastic skin, no AI over-smoothing, no synthetic uniformity, no over-sharpening";
 
 // STEP B: Semantic Interpretation system prompt.
 // Reads the extraction JSON (already in English) and maps visual intent
@@ -123,9 +124,12 @@ ALLOWED VALUES:
 focus_regions — select all that apply, with individual confidence per region:
   face, eyes, lips, hair, shoulders, upper_body, waist, hips, legs, feet, full_body
 
-pose_intent — select exactly one:
-  standing, seated, reclining, leaning, walking, crossed_legs_seated,
-  one_leg_weight_shift, hip_accentuating, portrait_pose, unclear
+pose_intent — select exactly one. Be precise: cross_legged_floor and legs_crossed_knee are
+  different poses. cross_legged_floor = both legs folded on the ground (floor sit).
+  legs_crossed_knee = one leg placed over the other at the knee while seated on a surface.
+  Allowed values:
+  standing, seated, reclining, leaning, walking, cross_legged_floor, legs_crossed_knee,
+  seated_side_angle, one_leg_weight_shift, hip_accentuating, portrait_pose, unclear
 
 aesthetic_tone — select all that apply, with individual confidence per tone:
   elegant, sensual, confident, glamorous, natural, luxurious, soft, editorial
@@ -136,13 +140,18 @@ composition_need — select exactly one:
 clothing_visibility_need — select exactly one:
   partial, full_outfit, styling_detail, not_specified
 
+detail_focus — secondary small-area priorities that influence the result without driving the
+  whole composition. Select only what is clearly implied. Allowed values:
+  eyes, lips, feet, hands, hair, shoulders, neck, waist, legs
+
 Return ONLY valid JSON, no markdown, no explanation:
 {
   "focus_regions": [{ "region": "string", "confidence": "high|medium|low" }],
   "pose_intent": { "value": "string", "confidence": "high|medium|low" },
   "aesthetic_tone": [{ "tone": "string", "confidence": "high|medium|low" }],
   "composition_need": { "value": "string", "confidence": "high|medium|low" },
-  "clothing_visibility_need": { "value": "string", "confidence": "high|medium|low" }
+  "clothing_visibility_need": { "value": "string", "confidence": "high|medium|low" },
+  "detail_focus": [{ "area": "string", "confidence": "high|medium|low" }]
 }
 `.trim();
 

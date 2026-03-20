@@ -24,8 +24,8 @@ const VALID = {
   ]),
   poses: new Set([
     "standing", "seated", "reclining", "leaning", "walking",
-    "crossed_legs_seated", "one_leg_weight_shift", "hip_accentuating",
-    "portrait_pose", "unclear",
+    "cross_legged_floor", "legs_crossed_knee", "seated_side_angle",
+    "one_leg_weight_shift", "hip_accentuating", "portrait_pose", "unclear",
   ]),
   tones: new Set([
     "elegant", "sensual", "confident", "glamorous",
@@ -36,6 +36,9 @@ const VALID = {
   ]),
   clothingNeeds: new Set([
     "partial", "full_outfit", "styling_detail", "not_specified",
+  ]),
+  detailAreas: new Set([
+    "eyes", "lips", "feet", "hands", "hair", "shoulders", "neck", "waist", "legs",
   ]),
   confidences: new Set(["high", "medium", "low"]),
 };
@@ -87,6 +90,10 @@ function validateAndNormalize(parsed) {
     confidence: safeConf(cv.confidence),
   };
 
+  const detail_focus = (parsed.detail_focus || [])
+    .filter((d) => d && VALID.detailAreas.has(d.area))
+    .map((d) => ({ area: d.area, confidence: safeConf(d.confidence) }));
+
   return {
     focus_regions: focus_regions.length > 0
       ? focus_regions
@@ -95,6 +102,7 @@ function validateAndNormalize(parsed) {
     aesthetic_tone,
     composition_need,
     clothing_visibility_need,
+    detail_focus,
   };
 }
 
@@ -107,6 +115,7 @@ function buildFallback() {
     aesthetic_tone: [],
     composition_need: { value: "balanced", confidence: "low" },
     clothing_visibility_need: { value: "not_specified", confidence: "low" },
+    detail_focus: [],
     _fallback: true,
   };
 }
@@ -182,4 +191,21 @@ function tonesAtConfidence(interpretation, minConfidence = "medium") {
   );
 }
 
-module.exports = { interpret, regionsAtConfidence, primaryTone, tonesAtConfidence };
+// Returns a Set of detail_focus area names at or above the given minimum confidence.
+function detailFociAtConfidence(interpretation, minConfidence = "medium") {
+  const order = { high: 2, medium: 1, low: 0 };
+  const threshold = order[minConfidence] ?? 1;
+  return new Set(
+    (interpretation.detail_focus || [])
+      .filter((d) => (order[d.confidence] ?? 0) >= threshold)
+      .map((d) => d.area)
+  );
+}
+
+module.exports = {
+  interpret,
+  regionsAtConfidence,
+  primaryTone,
+  tonesAtConfidence,
+  detailFociAtConfidence,
+};

@@ -53,6 +53,7 @@ function buildStructuredAnalysis(extraction, spec, plan) {
     `- Framing reason      : ${plan.framing_reason}`,
     `- Emphasis targets    : ${(plan.emphasis_targets || []).join(", ") || "none"}`,
     `- Interp. regions     : ${(plan.interpretation_regions || []).join(", ") || "none"}`,
+    `- Pose intent (interp): ${plan._poseIntentValue || "unclear"} [${plan._poseIntentConfidence || "low"}]`,
     `- Pose source         : ${plan.pose_reason || "default"}`,
     `- Pose suggestion     : ${plan.pose_suggestion || "default pose"}`,
     `- Composition goal    : ${plan.composition_goal}`,
@@ -105,6 +106,17 @@ function buildInterpretationSummary(interpretation) {
   const cv = interpretation.clothing_visibility_need;
   if (cv) {
     lines.push(`Clothing visibility: ${confEmoji[cv.confidence] || "[?]"} ${cv.value}`);
+  }
+
+  // Detail focus (new)
+  const df = interpretation.detail_focus || [];
+  if (df.length > 0) {
+    lines.push("Detail focus:");
+    for (const d of df) {
+      lines.push(`  ${confEmoji[d.confidence] || "[?]"} ${d.area}`);
+    }
+  } else {
+    lines.push("Detail focus: none");
   }
 
   if (interpretation._fallback) {
