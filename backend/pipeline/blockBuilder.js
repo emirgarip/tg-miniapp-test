@@ -111,6 +111,10 @@ function buildBlocks(spec, plan, interpretation = {}) {
   const poseConfidence = interpretation.pose_intent?.confidence;
   const poseIntentValue = interpretation.pose_intent?.value || "unclear";
 
+  // Declared here so it is available to both the face block (cross-reference note)
+  // and the eyes block (identity reinforcement) without a temporal dead zone.
+  const eyeDetailsIsUser = spec?.eyes?.details?.source === "user";
+
   // ── 1. subject ───────────────────────────────────────────────────────────────
   const toneDesc =
     SUBJECT_TONE_DESC[primary] || "editorial-quality presence and realistic proportions";
@@ -201,7 +205,7 @@ function buildBlocks(spec, plan, interpretation = {}) {
   // ── 5. eyes and expression ────────────────────────────────────────────────────
   const eyeColor = v(spec.eyes.color);
   const eyeDetails = v(spec.eyes.details);
-  const eyeDetailsIsUser = spec.eyes.details?.source === "user";
+  // eyeDetailsIsUser is declared at the top of this function — do not re-declare here.
   const expression = v(spec.expression);
   const eyeIsFocus =
     detailFoci.has("eyes") ||

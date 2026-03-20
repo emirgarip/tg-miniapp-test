@@ -168,6 +168,14 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
+      // Non-blocking notice when content was sanitized (SOFT_EXPLICIT path).
+      if (data.content_adjusted && data.adjustment_message) {
+        const notice = document.createElement("p");
+        notice.className = "adjustment-notice";
+        notice.textContent = data.adjustment_message;
+        output.appendChild(notice);
+      }
+
       // A. Structured Analysis
       output.appendChild(
         makeSection("Structured Analysis", data.structured_analysis || "Not available")

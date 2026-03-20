@@ -60,6 +60,13 @@ module.exports = async (req, res) => {
       });
     }
 
+    // Detect SOFT_EXPLICIT: the extractor sanitized suggestive/revealing language but
+    // did not refuse. Flag this so the UI can show a non-blocking informational message.
+    const safetyAdj = String(extraction.extracted?.safety_adjustments || "").trim().toLowerCase();
+    const isContentAdjusted =
+      extraction.safety_flags?.explicit_or_nudity_request === true ||
+      (safetyAdj !== "" && safetyAdj !== "none");
+
     // ─── STEP B: Interpret + Normalize in parallel ────────────────────────────
     // normalize() is synchronous (instant). interpret() is an async LLM call.
     // Start interpret first, then normalize while awaiting the API response.
@@ -105,6 +112,10 @@ module.exports = async (req, res) => {
       provider: "openai",
       model: MODEL,
       refusal: false,
+      content_adjusted: isContentAdjusted,
+      adjustment_message: isContentAdjusted
+        ? "Some parts of your request were adjusted to keep the image tasteful while preserving your intent."
+        : null,
       structured_analysis: structuredAnalysis,
       semantic_interpretation: interpretationSummary,
       semantic_interpretation_raw: interpretation,

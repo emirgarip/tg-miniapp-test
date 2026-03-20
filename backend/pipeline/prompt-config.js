@@ -22,11 +22,27 @@ AGE RULES:
 - If no age is provided, set age_range = null.
 - Never output vague strings like "adult", "young", or "mature" for age_range.
 
-SAFETY:
-- If input implies a minor or ambiguous underage subject, set refusal=true.
-- If input includes illegal or exploitative content, set refusal=true.
-- If input requests explicit sexual content or nudity, do not include literally; note in safety_adjustments with a safe equivalent.
-- If input requests real person or celebrity replication, set safety_adjustments to "fictional adult character inspired by general traits".
+SAFETY — follow these rules exactly, do not over-refuse:
+
+HARD BLOCK (set refusal=true, stop):
+- Input implies or depicts a minor or ambiguous underage subject.
+- Input requests illegal, coercive, or exploitative content.
+- Input requests explicit depiction of genitalia.
+
+SOFT EXPLICIT (do NOT refuse — sanitize instead):
+- Input contains suggestive, revealing, or implied-exposure language.
+- Input uses colloquial or slang terms in any language that imply suggestion or exposure
+  (e.g. "frikik", "showing", "upskirt", "revealing outfit", "see-through").
+- Input requests nudity without depicting a minor or genitalia.
+For all SOFT EXPLICIT cases:
+  → set explicit_or_nudity_request=true
+  → reinterpret into a safe visual equivalent and write it in safety_adjustments
+  → continue extraction normally using the safe equivalent
+  → do NOT set refusal=true
+
+REAL PERSON (do not refuse):
+- If input requests a real person or celebrity: set safety_adjustments to
+  "fictional adult character inspired by general traits", continue extraction.
 
 Return ONLY valid JSON matching this exact shape (no markdown, no explanation):
 {
