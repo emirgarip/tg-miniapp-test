@@ -14,7 +14,7 @@
 //   6. Pose intent from interpretation (if high/medium confidence)
 //   7. Default: portrait framing
 
-const { regionsAtConfidence } = require("./interpreter");
+const { regionsAtConfidence, regionsWithIntent } = require("./interpreter");
 
 // ─── framing presets ─────────────────────────────────────────────────────────
 
@@ -110,6 +110,8 @@ function buildCompositionGoal(chosenFraming, targets, interp, envType) {
     visReqs.push("leg line clearly in frame");
   if (interpRegions.has("full_body") && !targets.has("physique"))
     visReqs.push("complete body silhouette visible");
+  if (interpRegions.has("chest") && !targets.has("chest"))
+    visReqs.push("chest and upper body clearly in frame");
 
   const clothingNeed = interp?.clothing_visibility_need?.value;
   if (clothingNeed === "full_outfit") visReqs.push("full clothing item visible without cropping");
@@ -154,6 +156,9 @@ function plan(spec, interpretation = {}) {
   // Signals from interpreter
   const interpRegionsHigh = regionsAtConfidence(interpretation, "high");
   const interpRegionsMed = regionsAtConfidence(interpretation, "medium");
+  // Regions where the user's intent is specifically to see them in frame (exposure).
+  // E.g. "beautiful feet" → feet with exposure intent → require full-body framing.
+  const interpExposureRegions = regionsWithIntent(interpretation, "medium", "exposure");
   const poseIntent = interpretation.pose_intent || { value: "unclear", confidence: "low" };
   const compNeed = interpretation.composition_need || { value: "balanced", confidence: "low" };
   const clothingVisibility = interpretation.clothing_visibility_need || {
@@ -180,11 +185,14 @@ function plan(spec, interpretation = {}) {
   const hasInterpFullBody = interpRegionsHigh.has("full_body") || interpRegionsMed.has("full_body");
   const hasInterpLegs = interpRegionsHigh.has("legs") || interpRegionsMed.has("legs");
   const hasInterpHips = interpRegionsHigh.has("hips") || interpRegionsMed.has("hips");
+  // Feet with exposure intent → must show feet → full-body framing required.
+  const hasFeetExposure = interpExposureRegions.has("feet");
 
   if (
     (isUserBodyEmphasis && (normTargets.has("legs") || normTargets.has("physique"))) ||
     hasInterpFullBody ||
-    hasInterpLegs
+    hasInterpLegs ||
+    hasFeetExposure
   ) {
     chosenFraming = FRAMING.fullBody;
     const reasons = [];
@@ -192,6 +200,7 @@ function plan(spec, interpretation = {}) {
     if (isUserBodyEmphasis && normTargets.has("physique")) reasons.push("user emphasized physique");
     if (hasInterpFullBody) reasons.push("interpretation: full_body region");
     if (hasInterpLegs) reasons.push("interpretation: legs region");
+    if (hasFeetExposure) reasons.push("feet visibility required (exposure intent)");
     framingReason = reasons.join(", ");
   } else if (
     (isUserBodyEmphasis && normTargets.has("hips")) ||
@@ -249,14 +258,18 @@ function plan(spec, interpretation = {}) {
 
   // ─── STEP 2: Pose suggestion ──────────────────────────────────────────────
   // Build a pose that supports the user's emphasis.
-  // Priority: normalizer targets > interpretation pose_intent > default.
+  // Priority order (highest wins):
+  //   1. HIGH-confidence pose_intent from interpreter
+  //   2. MEDIUM-confidence pose_intent from interpreter  ← MUST NOT fall through when present
+  //   3. Normalizer body-area targets (only when no medium/high pose signal)
+  //   4. Interpretation focus regions
+  //   5. Clothing fallback
   // Only used when user did not provide a pose.
   let pose_suggestion = null;
   let poseReason = "default";
 
   if (!poseIsUser) {
     // Priority 1: HIGH-confidence specific pose from interpreter (most precise signal).
-    // e.g. user clearly described "sitting cross-legged on the floor" → preserve exactly.
     if (
       poseIntent.value !== "unclear" &&
       poseIntent.confidence === "high" &&
@@ -266,8 +279,21 @@ function plan(spec, interpretation = {}) {
       poseReason = `interpretation: pose_intent = ${poseIntent.value} (HIGH — used as primary)`;
     }
 
-    // Priority 2: Normalizer body-area targets (user explicitly mentioned a body area).
-    // Only applies when no high-confidence pose intent was found.
+    // Priority 2: MEDIUM-confidence pose from interpreter.
+    // Promoted above normalizer targets: a detected pose intent at medium confidence is more
+    // specific than a generic body-area template. E.g. "legs_crossed_knee" beats "hips pose".
+    if (
+      !pose_suggestion &&
+      poseIntent.value !== "unclear" &&
+      poseIntent.confidence === "medium" &&
+      POSE_TEMPLATES[poseIntent.value]
+    ) {
+      pose_suggestion = POSE_TEMPLATES[poseIntent.value];
+      poseReason = `interpretation: pose_intent = ${poseIntent.value} (medium — enforced)`;
+    }
+
+    // Priority 3: Normalizer body-area targets.
+    // Only reached when there is no medium/high-confidence pose intent.
     if (!pose_suggestion) {
       for (const target of ["hips", "legs", "physique", "waist", "chest", "shoulders"]) {
         if (normTargets.has(target) && POSE_TEMPLATES[target]) {
@@ -276,17 +302,6 @@ function plan(spec, interpretation = {}) {
           break;
         }
       }
-    }
-
-    // Priority 3: MEDIUM-confidence pose from interpreter.
-    if (
-      !pose_suggestion &&
-      poseIntent.value !== "unclear" &&
-      poseIntent.confidence === "medium" &&
-      POSE_TEMPLATES[poseIntent.value]
-    ) {
-      pose_suggestion = POSE_TEMPLATES[poseIntent.value];
-      poseReason = `interpretation: pose_intent = ${poseIntent.value} (medium)`;
     }
 
     // Priority 4: Interpretation focus regions.

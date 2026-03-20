@@ -121,8 +121,14 @@ CRITICAL RULES:
 
 ALLOWED VALUES:
 
-focus_regions — select all that apply, with individual confidence per region:
-  face, eyes, lips, hair, shoulders, upper_body, waist, hips, legs, feet, full_body
+focus_regions — select all that apply, with individual confidence and intent per region:
+  Allowed regions: face, eyes, lips, hair, shoulders, chest, upper_body, waist, hips, legs, feet, full_body
+
+  For each region also classify the user's intent:
+    - emphasis:  this region is the compositional priority (user wants it to be the main focus)
+    - exposure:  this region needs to be visible and clearly in frame (user expects to see it)
+    - shape:     the specific form or geometry of this region matters (user described it precisely)
+    - aesthetic: the beauty or styling quality of this region is highlighted by the user
 
 pose_intent — select exactly one. Be precise: cross_legged_floor and legs_crossed_knee are
   different poses. cross_legged_floor = both legs folded on the ground (floor sit).
@@ -146,7 +152,7 @@ detail_focus — secondary small-area priorities that influence the result witho
 
 Return ONLY valid JSON, no markdown, no explanation:
 {
-  "focus_regions": [{ "region": "string", "confidence": "high|medium|low" }],
+  "focus_regions": [{ "region": "string", "confidence": "high|medium|low", "intent": "emphasis|exposure|shape|aesthetic" }],
   "pose_intent": { "value": "string", "confidence": "high|medium|low" },
   "aesthetic_tone": [{ "tone": "string", "confidence": "high|medium|low" }],
   "composition_need": { "value": "string", "confidence": "high|medium|low" },

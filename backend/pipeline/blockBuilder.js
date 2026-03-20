@@ -126,6 +126,7 @@ function buildBlocks(spec, plan, interpretation = {}) {
 
   // ── 3. face ──────────────────────────────────────────────────────────────────
   const faceVal = v(spec.face);
+  const faceIsUser = spec.face?.source === "user";
   const faceIsPrimary =
     interpretation.composition_need?.value === "face_first" &&
     (interpretation.composition_need?.confidence === "high" ||
@@ -133,14 +134,14 @@ function buildBlocks(spec, plan, interpretation = {}) {
   const lipsAreFocus = detailFoci.has("lips");
   const neckAreFocus = detailFoci.has("neck");
 
-  blocks.face =
-    `${faceVal}. ` +
-    // Realism: avoid synthetic perfection by adding natural micro-variation
+  // Shared realism base — applies regardless of whether face was user-specified or auto-filled.
+  const faceRealismBase =
     `Skin exhibits natural pore visibility, soft tonal micro-variation, and realistic surface texture — ` +
     `subtle natural irregularity in skin tone and fine surface detail that prevents the synthetic uniformity typical of AI-generated images. ` +
     `Facial features carry slight natural asymmetry — one side reads marginally different from the other in a realistic, human way. ` +
-    `Feature harmony: defined jawline, sculpted cheekbones, natural lip fullness, and a nose with realistic bridge shape and slight tonal variation. ` +
-    `Skin tone transitions are gradual and believable — no sharp tonal edges or unnaturally even coverage.` +
+    `Skin tone transitions are gradual and believable — no sharp tonal edges or unnaturally even coverage.`;
+
+  const faceDetailNotes =
     (lipsAreFocus
       ? " Lips are a detail focus — lip line is well-defined with natural fullness, slight tonal differentiation between upper and lower lip, and realistic surface texture."
       : "") +
@@ -150,6 +151,33 @@ function buildBlocks(spec, plan, interpretation = {}) {
     (faceIsPrimary
       ? " Face is the primary compositional anchor — eyes, expression, and facial geometry are the main visual focus."
       : "");
+
+  // When the user defined a specific eye shape, the face block must not assert generic
+  // facial geometry that could override it. Cross-reference explicitly.
+  const faceEyeIdentityNote = eyeDetailsIsUser
+    ? " Eye shape is user-defined and identity-critical — defer to the Eyes block for eye geometry; do not average or override with balanced facial defaults."
+    : "";
+
+  if (faceIsUser) {
+    // Identity preservation mode: user described specific facial traits.
+    // Do NOT override with generic feature harmony — preserve exactly what was described.
+    blocks.face =
+      `${faceVal}. ` +
+      `These are identity-defining facial traits — render them precisely and make them visibly recognizable. ` +
+      `Do NOT normalize, average out, or replace with generic proportions or default beauty standards. ` +
+      `These specific features define this subject's visual identity and must be preserved faithfully. ` +
+      faceRealismBase +
+      faceDetailNotes +
+      faceEyeIdentityNote;
+  } else {
+    // Auto-filled face: use generic feature harmony as sensible defaults.
+    blocks.face =
+      `${faceVal}. ` +
+      faceRealismBase +
+      ` Feature harmony: defined jawline, sculpted cheekbones, natural lip fullness, and a nose with realistic bridge shape and slight tonal variation.` +
+      faceDetailNotes +
+      faceEyeIdentityNote;
+  }
 
   // ── 4. hair ──────────────────────────────────────────────────────────────────
   const hairColor = v(spec.hair.color);
@@ -181,9 +209,12 @@ function buildBlocks(spec, plan, interpretation = {}) {
       (r) => r.region === "eyes" && (r.confidence === "high" || r.confidence === "medium")
     );
 
-  // Preserve specific eye shape language precisely — do not flatten into generic "almond-shaped".
+  // Identity-critical: user-defined eye shape must survive all layers without normalization.
   const eyeShapeNote = eyeDetailsIsUser
-    ? `Eye shape: ${eyeDetails} — preserve this specific geometry precisely without flattening into a generic eye shape.`
+    ? `Eye shape is an identity-defining trait: ${eyeDetails}. ` +
+      `This geometry is identity-critical — do NOT normalize, soften, or generalize into a standard shape. ` +
+      `Render exactly as described and ensure it is visibly distinct in the final image. ` +
+      `Do NOT reduce to weak descriptors like "slightly almond" or "balanced".`
     : `${eyeDetails}.`;
 
   blocks.eyes_expression =
@@ -219,6 +250,10 @@ function buildBlocks(spec, plan, interpretation = {}) {
   } else if (emphasisTargets.includes("waist") || interpRegions.includes("waist")) {
     bodyVisibilityNote =
       "Waist definition is the compositional focus — midsection is clearly in frame with natural narrowing and realistic torso line.";
+  } else if (emphasisTargets.includes("chest") || interpRegions.includes("chest")) {
+    bodyVisibilityNote =
+      "Chest and upper body are the primary visual emphasis — upper body framing is open and the chest area is clearly visible. " +
+      "Natural anatomy is preserved — emphasis is achieved through clothing fit, body language, and composition rather than exaggeration.";
   }
 
   let bodyToneNote = "";
@@ -258,10 +293,15 @@ function buildBlocks(spec, plan, interpretation = {}) {
   const poseIsUserDriven = spec.pose?.source === "user";
   const poseVal = poseIsUserDriven ? v(spec.pose) : plan.pose_suggestion || v(spec.pose);
 
-  // Broaden language only for low-confidence poses; preserve exactly for high-confidence.
+  // Low confidence → broaden (allow natural variation).
+  // Medium/high confidence → enforce (render the described position precisely).
   const poseBroadenNote =
     !poseIsUserDriven && poseConfidence === "low"
       ? " Exact stance geometry is flexible — pose should feel natural, unscripted, and unstaged."
+      : "";
+  const poseEnforceNote =
+    !poseIsUserDriven && (poseConfidence === "high" || poseConfidence === "medium")
+      ? " This is an explicitly defined pose — render the described position precisely. Do not substitute with a generic standing or resting posture."
       : "";
 
   // detail_focus: feet/hands secondary notes in pose block
@@ -273,7 +313,7 @@ function buildBlocks(spec, plan, interpretation = {}) {
     : "";
 
   blocks.pose =
-    `${poseVal}.${poseBroadenNote} ` +
+    `${poseVal}.${poseBroadenNote}${poseEnforceNote} ` +
     `Body language reads as natural and unforced — weight balanced, shoulder line relaxed, ` +
     `and overall posture supporting the composition goal: ${plan.composition_goal}` +
     feetNote +

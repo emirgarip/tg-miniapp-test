@@ -209,11 +209,18 @@ function normalize(extracted = {}) {
   );
 
   // Detect specific emphasis targets from raw user body text (before normalization).
+  // Also scan safety_adjustments — the extractor may have safely reinterpreted explicit intent
+  // (e.g. "butt → hip curve emphasis") and we must not silently drop that signal here.
   const rawBodyEmphasisText = extracted.body?.emphasis || null;
   const rawBodyTypeText = extracted.body?.type || null;
-  const emphasisTargets = rawBodyEmphasis
-    ? detectEmphasisTargets(rawBodyEmphasisText, rawBodyTypeText)
-    : new Set();
+  const rawSafetyAdjText = extracted.safety_adjustments || null;
+  const emphasisTargets =
+    rawBodyEmphasis || rawSafetyAdjText
+      ? detectEmphasisTargets(
+          `${rawBodyEmphasisText || ""} ${rawSafetyAdjText || ""}`.trim(),
+          rawBodyTypeText
+        )
+      : new Set();
 
   const needsFullClothingVisibility = clothingNeedsFullVisibility(
     extracted.clothing || ""

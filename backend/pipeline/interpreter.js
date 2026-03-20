@@ -20,8 +20,9 @@ const { INTERPRETATION_SYSTEM_PROMPT } = require("./prompt-config");
 const VALID = {
   regions: new Set([
     "face", "eyes", "lips", "hair", "shoulders",
-    "upper_body", "waist", "hips", "legs", "feet", "full_body",
+    "chest", "upper_body", "waist", "hips", "legs", "feet", "full_body",
   ]),
+  regionIntents: new Set(["emphasis", "exposure", "shape", "aesthetic"]),
   poses: new Set([
     "standing", "seated", "reclining", "leaning", "walking",
     "cross_legged_floor", "legs_crossed_knee", "seated_side_angle",
@@ -66,7 +67,11 @@ function firstJson(text) {
 function validateAndNormalize(parsed) {
   const focus_regions = (parsed.focus_regions || [])
     .filter((r) => r && VALID.regions.has(r.region))
-    .map((r) => ({ region: r.region, confidence: safeConf(r.confidence) }));
+    .map((r) => ({
+      region: r.region,
+      confidence: safeConf(r.confidence),
+      intent: VALID.regionIntents.has(r.intent) ? r.intent : "emphasis",
+    }));
 
   const pi = parsed.pose_intent || {};
   const pose_intent = {
@@ -191,6 +196,22 @@ function tonesAtConfidence(interpretation, minConfidence = "medium") {
   );
 }
 
+// Returns a Set of region names that match a specific intent AND meet minimum confidence.
+// E.g. regionsWithIntent(interp, "medium", "exposure") → regions the user wants visibly shown.
+function regionsWithIntent(interpretation, minConfidence = "medium", intent = "exposure") {
+  const order = { high: 2, medium: 1, low: 0 };
+  const threshold = order[minConfidence] ?? 1;
+  return new Set(
+    (interpretation.focus_regions || [])
+      .filter(
+        (r) =>
+          (order[r.confidence] ?? 0) >= threshold &&
+          r.intent === intent
+      )
+      .map((r) => r.region)
+  );
+}
+
 // Returns a Set of detail_focus area names at or above the given minimum confidence.
 function detailFociAtConfidence(interpretation, minConfidence = "medium") {
   const order = { high: 2, medium: 1, low: 0 };
@@ -205,6 +226,7 @@ function detailFociAtConfidence(interpretation, minConfidence = "medium") {
 module.exports = {
   interpret,
   regionsAtConfidence,
+  regionsWithIntent,
   primaryTone,
   tonesAtConfidence,
   detailFociAtConfidence,
