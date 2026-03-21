@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Telegram Mini App Test v2</title>
+  <title>Base Model Creator</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <!-- Telegram WebApp SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
-  <!-- Vercel Web Analytics (works on Vercel after enabling in dashboard) -->
+  <!-- Vercel Web Analytics -->
   <script>
     window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
   </script>
@@ -18,17 +18,28 @@
 </head>
 <body>
   <div class="app-container">
-    <h1>Telegram Mini App Test v2</h1>
+    <h1>Base Model Creator</h1>
+
+    <p class="page-description">
+      Describe the physical traits of your model in any language.<br />
+      This step creates the <strong>base identity profile</strong> — pose, environment, and scenario choices come later.
+    </p>
+
     <textarea
       id="user-input"
       class="user-input"
       rows="6"
-      placeholder="Describe your subject and scene in any language..."
+      placeholder="Describe physical traits: age, skin tone, hair color and texture, eye shape, face features, body type, accessories…"
     ></textarea>
-    <p id="hint" class="hint">Minimum 20 characters</p>
-    <button id="hello-btn">Generate Prompt</button>
+
+    <p class="input-guidance">
+      For best results, focus on: age, skin tone, hair, eyes, face shape, body type, style, and accessories.
+    </p>
+
+    <p id="hint" class="hint">Minimum 20 characters (0/20)</p>
+    <button id="hello-btn">Build Base Model</button>
+
     <div id="output" class="output"></div>
-    <button id="copy-btn" class="copy-btn" hidden>Copy Final Prompt</button>
   </div>
 
   <script src="app.js"></script>

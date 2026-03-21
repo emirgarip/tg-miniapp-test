@@ -1,19 +1,15 @@
 document.addEventListener("DOMContentLoaded", () => {
   const tg = window.Telegram?.WebApp;
-  const helloBtn = document.getElementById("hello-btn");
+  const btn = document.getElementById("hello-btn");
   const userInput = document.getElementById("user-input");
   const hint = document.getElementById("hint");
   const output = document.getElementById("output");
-  const copyBtn = document.getElementById("copy-btn");
 
   if (tg) {
-    try {
-      tg.ready();
-      tg.expand();
-    } catch (_) {}
+    try { tg.ready(); tg.expand(); } catch (_) {}
   }
 
-  // ─── hint ────────────────────────────────────────────────────────────────
+  // ─── character hint ───────────────────────────────────────────────────────
   function updateHint() {
     const len = userInput.value.trim().length;
     hint.textContent = `Minimum 20 characters (${len}/20)`;
@@ -22,117 +18,109 @@ document.addEventListener("DOMContentLoaded", () => {
   updateHint();
   userInput.addEventListener("input", updateHint);
 
-  // ─── helpers ─────────────────────────────────────────────────────────────
+  // ─── helpers ──────────────────────────────────────────────────────────────
+
   function renderError(message) {
     output.innerHTML = "";
     const p = document.createElement("p");
     p.className = "error-message";
     p.textContent = message;
     output.appendChild(p);
-    copyBtn.hidden = true;
   }
 
-  // variant: undefined | "accent" | "interp"
-  function makeSection(title, content, accent, variant) {
-    const wrap = document.createElement("div");
-    let cls = "result-block";
-    if (accent) cls += " result-block--accent";
-    if (variant === "interp") cls += " result-block--interp";
-    wrap.className = cls;
-
-    const h = document.createElement("div");
-    h.className = "result-block__title";
-    h.textContent = title;
-    wrap.appendChild(h);
-
-    const body = document.createElement("div");
-    body.className = "result-block__body";
-    body.textContent = content;
-    wrap.appendChild(body);
-
-    return wrap;
+  function renderNote(message) {
+    const p = document.createElement("p");
+    p.className = "info-note";
+    p.textContent = message;
+    output.appendChild(p);
   }
 
-  function makeBlocksSection(blocks) {
-    const LABELS = {
-      subject: "Subject",
-      age: "Age",
-      face: "Face",
-      hair: "Hair",
-      eyes_expression: "Eyes & Expression",
-      body: "Body",
-      clothing: "Clothing",
-      pose: "Pose",
-      environment: "Environment",
-      lighting: "Lighting",
-      camera: "Camera & Composition",
-      quality: "Quality & Realism",
-      negative: "Negative Prompt",
-    };
+  // Source badge: color depends on where the value came from.
+  function sourceBadge(source) {
+    const badge = document.createElement("span");
+    badge.className = `source-badge source-badge--${source}`;
+    badge.textContent = source;
+    return badge;
+  }
 
-    const wrap = document.createElement("div");
-    wrap.className = "result-block";
+  // Render one leaf field: key + value + source badge.
+  function renderField(key, tagged, container) {
+    const row = document.createElement("div");
+    row.className = "field-row";
 
-    const h = document.createElement("div");
-    h.className = "result-block__title";
-    h.textContent = "Prompt Blocks";
-    wrap.appendChild(h);
+    const keyEl = document.createElement("span");
+    keyEl.className = "field-key";
+    keyEl.textContent = key;
+    row.appendChild(keyEl);
 
-    for (const [key, text] of Object.entries(blocks)) {
-      const label = LABELS[key] || key;
+    const valEl = document.createElement("span");
+    valEl.className = "field-value";
+    valEl.textContent = tagged.value ?? "null";
+    row.appendChild(valEl);
 
-      const row = document.createElement("div");
-      row.className = "block-row";
+    row.appendChild(sourceBadge(tagged.source || "default"));
+    container.appendChild(row);
+  }
 
-      const badge = document.createElement("span");
-      badge.className = "block-badge";
-      badge.textContent = label;
-      row.appendChild(badge);
+  // Render a section group (e.g. "hair", "face", "body").
+  function renderGroup(groupName, groupObj, container) {
+    const section = document.createElement("div");
+    section.className = "json-group";
 
-      const val = document.createElement("div");
-      val.className = "block-value";
-      val.textContent = text;
-      row.appendChild(val);
+    const title = document.createElement("div");
+    title.className = "json-group__title";
+    title.textContent = groupName;
+    section.appendChild(title);
 
-      wrap.appendChild(row);
+    for (const [key, tagged] of Object.entries(groupObj)) {
+      renderField(key, tagged, section);
     }
-    return wrap;
+
+    container.appendChild(section);
   }
 
-  function formatPlanning(vp) {
-    if (!vp) return "Not available";
-    const lines = [
-      `Subject emphasis    : ${vp.subject_emphasis}`,
-      `Framing strategy    : ${vp.framing_strategy}`,
-      `Framing reason      : ${vp.framing_reason || "—"}`,
-      `Emphasis targets    : ${(vp.emphasis_targets || []).join(", ") || "none"}`,
-      `Interp. regions     : ${(vp.interpretation_regions || []).join(", ") || "none"}`,
-      `Pose source         : ${vp.pose_reason || "default"}`,
-      `Pose suggestion     : ${vp.pose_suggestion || "default"}`,
-      `Composition goal    : ${vp.composition_goal}`,
-    ];
-    return lines.join("\n");
-  }
+  // Render the full base_model JSON in a structured, human-readable view.
+  function renderBaseModel(model, container) {
+    const TOP_LEVEL_FIELDS = ["gender_presentation", "age_range", "heritage_look", "skin_tone"];
+    const GROUP_FIELDS = ["hair", "eyes", "face", "body", "style", "accessories", "reference"];
 
-  function formatSpec(spec) {
-    if (!spec) return "Not available";
-    const lines = [];
-    function walk(obj, prefix) {
-      for (const [k, v] of Object.entries(obj)) {
-        const key = prefix ? `${prefix}.${k}` : k;
-        if (v && typeof v === "object" && "value" in v) {
-          lines.push(`${key} [${v.source}]: ${v.value}`);
-        } else if (v && typeof v === "object") {
-          walk(v, key);
-        }
+    // Top-level scalar fields
+    const topSection = document.createElement("div");
+    topSection.className = "json-group";
+
+    const topTitle = document.createElement("div");
+    topTitle.className = "json-group__title";
+    topTitle.textContent = "identity";
+    topSection.appendChild(topTitle);
+
+    for (const key of TOP_LEVEL_FIELDS) {
+      if (model[key] !== undefined) {
+        renderField(key, model[key], topSection);
       }
     }
-    walk(spec, "");
-    return lines.join("\n");
+    container.appendChild(topSection);
+
+    // Nested groups
+    for (const group of GROUP_FIELDS) {
+      if (model[group]) {
+        renderGroup(group, model[group], container);
+      }
+    }
   }
 
-  // ─── main click ──────────────────────────────────────────────────────────
-  helloBtn.addEventListener("click", async () => {
+  // ─── stats bar ────────────────────────────────────────────────────────────
+  function renderStats(userCount, inferredCount, latencyMs) {
+    const bar = document.createElement("div");
+    bar.className = "stats-bar";
+    bar.innerHTML =
+      `<span class="stat"><span class="source-badge source-badge--user">user</span> ${userCount} fields</span>` +
+      `<span class="stat"><span class="source-badge source-badge--inferred">inferred</span> ${inferredCount} fields</span>` +
+      `<span class="stat stat--muted">${latencyMs} ms · gpt-4.1-mini</span>`;
+    output.appendChild(bar);
+  }
+
+  // ─── main click ───────────────────────────────────────────────────────────
+  btn.addEventListener("click", async () => {
     const input = userInput.value.trim();
     if (input.length < 20) {
       renderError("Please enter at least 20 characters.");
@@ -140,14 +128,24 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     try {
-      helloBtn.disabled = true;
-      copyBtn.hidden = true;
+      btn.disabled = true;
       output.innerHTML = "";
 
+      // Loading messages — cycle through them to feel responsive
+      const loadingMsgs = [
+        "Analyzing physical traits…",
+        "Building your base model profile…",
+        "Filling missing details with default values…",
+      ];
+      let msgIdx = 0;
       const loading = document.createElement("p");
       loading.className = "loading-msg";
-      loading.textContent = "Running pipeline… this may take a few seconds.";
+      loading.textContent = loadingMsgs[msgIdx];
       output.appendChild(loading);
+      const loadingTimer = setInterval(() => {
+        msgIdx = (msgIdx + 1) % loadingMsgs.length;
+        loading.textContent = loadingMsgs[msgIdx];
+      }, 1800);
 
       const response = await fetch(`${window.location.origin}/api/test/openai-prompt`, {
         method: "POST",
@@ -156,101 +154,42 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       const data = await response.json();
 
+      clearInterval(loadingTimer);
       output.innerHTML = "";
 
+      // Hard error
       if (data?.error) {
         renderError(data.error);
         return;
       }
 
-      if (data.refusal) {
-        renderError(data.final_prompt);
-        return;
+      // Soft note (defaults-only or sparse input)
+      if (data.note) {
+        renderNote(data.note);
       }
 
-      // Non-blocking notice when content was sanitized (SOFT_EXPLICIT path).
-      if (data.content_adjusted && data.adjustment_message) {
-        const notice = document.createElement("p");
-        notice.className = "adjustment-notice";
-        notice.textContent = data.adjustment_message;
-        output.appendChild(notice);
+      // Stats bar
+      renderStats(data.user_traits_found ?? 0, data.inferred_traits ?? 0, data.latency_ms ?? 0);
+
+      // Base model JSON viewer
+      const modelWrap = document.createElement("div");
+      modelWrap.className = "model-viewer";
+
+      const viewerTitle = document.createElement("div");
+      viewerTitle.className = "viewer-title";
+      viewerTitle.textContent = "Base Model Profile";
+      modelWrap.appendChild(viewerTitle);
+
+      if (data.base_model) {
+        renderBaseModel(data.base_model, modelWrap);
       }
 
-      // A. Structured Analysis
-      output.appendChild(
-        makeSection("Structured Analysis", data.structured_analysis || "Not available")
-      );
+      output.appendChild(modelWrap);
 
-      // B. Semantic Interpretation (new)
-      if (data.semantic_interpretation) {
-        output.appendChild(
-          makeSection("Semantic Interpretation", data.semantic_interpretation, false, "interp")
-        );
-      }
-
-      // C. Extracted Attributes (user-provided)
-      const extracted = data.extracted_attributes || [];
-      output.appendChild(
-        makeSection(
-          `Extracted Attributes (${extracted.length})`,
-          extracted.length ? extracted.join("\n") : "None — no explicit attributes detected"
-        )
-      );
-
-      // D. Auto-filled / Normalized Attributes
-      const auto = data.auto_filled_attributes || [];
-      output.appendChild(
-        makeSection(
-          `Auto-filled Attributes (${auto.length})`,
-          auto.length ? auto.join("\n") : "None"
-        )
-      );
-
-      // E. Visual Planning
-      output.appendChild(
-        makeSection("Visual Planning", formatPlanning(data.visual_planning))
-      );
-
-      // F. Character Spec
-      output.appendChild(
-        makeSection("Character Spec", formatSpec(data.character_spec))
-      );
-
-      // G. Prompt Blocks
-      if (data.prompt_blocks) {
-        output.appendChild(makeBlocksSection(data.prompt_blocks));
-      }
-
-      // H. Final Prompt
-      output.appendChild(
-        makeSection("Final Prompt", data.final_prompt || "Not available", true)
-      );
-
-      // H. Latency note
-      if (data.latency_ms) {
-        const meta = document.createElement("p");
-        meta.className = "meta-note";
-        meta.textContent = `Model: ${data.model} · Latency: ${data.latency_ms} ms`;
-        output.appendChild(meta);
-      }
-
-      // Copy button
-      copyBtn.hidden = false;
-      copyBtn.onclick = async () => {
-        try {
-          await navigator.clipboard.writeText(data.final_prompt || "");
-          copyBtn.textContent = "Copied!";
-        } catch (_) {
-          copyBtn.textContent = "Copy failed";
-        }
-        setTimeout(() => {
-          copyBtn.textContent = "Copy Final Prompt";
-        }, 1400);
-      };
     } catch (err) {
-      renderError("Failed to generate prompt: " + err.message);
+      renderError("Request failed: " + err.message);
     } finally {
-      helloBtn.disabled = false;
+      btn.disabled = false;
     }
   });
 });
