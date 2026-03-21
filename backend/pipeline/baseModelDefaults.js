@@ -1,6 +1,9 @@
-// Base Model — Allowed values and defaults.
-// Every field uses a stable enum-like value (snake_case).
-// Defaults produce a coherent adult female base model when no traits are provided.
+// Base Model — Field classification, allowed values, and required defaults.
+//
+// Field policy:
+//   REQUIRED   — must always have a value; filled with defaults when user omits them
+//   INFERRABLE — may be filled by AI Call #2 if useful context exists; stay null otherwise
+//   OPTIONAL   — null unless user explicitly provided them; never auto-filled
 
 const ALLOWED = {
   gender_presentation:    ["female", "male", "androgynous", "non_binary"],
@@ -35,41 +38,52 @@ const ALLOWED = {
   accessories_jewelry:    ["none", "minimal", "statement", "earrings_only", "layered"],
 };
 
+// ── Field classification ──────────────────────────────────────────────────────
+
+// Always present in the final JSON. Filled with defaults if user didn't provide them.
+const REQUIRED_FIELDS = new Set([
+  "gender_presentation", "age_range", "heritage_look", "skin_tone",
+  "hair_color", "hair_texture", "hair_length",
+  "eyes_color", "eyes_shape",
+  "body_type", "style_vibe",
+]);
+
+// May be filled by AI Call #2 if useful context exists. Null otherwise.
+const INFERRABLE_FIELDS = new Set([
+  "body_height_impression", "body_waist", "body_hips", "body_legs",
+]);
+
+// Null unless user explicitly provided them. Never auto-filled.
+// face.*, body.bust, body.feet_focus, style.makeup, accessories.*, reference.*
+
+// All flat field keys in schema order (used to iterate the full model).
+const ALL_FIELDS = [
+  "gender_presentation", "age_range", "heritage_look", "skin_tone",
+  "hair_color", "hair_texture", "hair_length",
+  "eyes_color", "eyes_shape",
+  "face_shape", "face_jawline", "face_nose", "face_lips", "face_cheekbones", "face_skin_details",
+  "body_type", "body_height_impression", "body_bust", "body_waist", "body_hips", "body_legs", "body_feet_focus",
+  "style_vibe", "style_makeup",
+  "accessories_glasses", "accessories_jewelry",
+];
+
+// Defaults for REQUIRED fields only.
 const DEFAULTS = {
-  gender_presentation:    "female",
-  age_range:              "25-29",
-  heritage_look:          "mixed_ambiguous",
-  skin_tone:              "light_olive",
-  hair_color:             "dark_brown",
-  hair_texture:           "slightly_wavy",
-  hair_length:            "long",
-  eyes_color:             "brown",
-  eyes_shape:             "almond",
-  face_shape:             "oval",
-  face_jawline:           "softly_defined",
-  face_nose:              "straight",
-  face_lips:              "balanced",
-  face_cheekbones:        "balanced",
-  face_skin_details:      "none",
-  body_type:              "slim_curvy",
-  body_height_impression: "average",
-  body_bust:              "balanced",
-  body_waist:             "defined",
-  body_hips:              "balanced",
-  body_legs:              "balanced",
-  body_feet_focus:        "none",
-  style_vibe:             "natural",
-  style_makeup:           "minimal",
-  accessories_glasses:    "none",
-  accessories_jewelry:    "none",
-  // celebrity_inspiration is always null in this phase (disabled)
+  gender_presentation: "female",
+  age_range:           "25-29",
+  heritage_look:       "mixed_ambiguous",
+  skin_tone:           "light_olive",
+  hair_color:          "dark_brown",
+  hair_texture:        "slightly_wavy",
+  hair_length:         "long",
+  eyes_color:          "brown",
+  eyes_shape:          "almond",
+  body_type:           "slim_curvy",
+  style_vibe:          "natural",
 };
 
-// Flat list of all field keys in the order they appear in the schema.
-const FIELD_KEYS = Object.keys(DEFAULTS);
-
 // Validate a raw value against the allowed list for a field.
-// Returns the value if valid, null otherwise.
+// Returns the normalized value if valid, null otherwise.
 function sanitize(field, value) {
   if (value == null) return null;
   const allowed = ALLOWED[field];
@@ -78,4 +92,4 @@ function sanitize(field, value) {
   return allowed.includes(v) ? v : null;
 }
 
-module.exports = { ALLOWED, DEFAULTS, FIELD_KEYS, sanitize };
+module.exports = { ALLOWED, DEFAULTS, REQUIRED_FIELDS, INFERRABLE_FIELDS, ALL_FIELDS, sanitize };
