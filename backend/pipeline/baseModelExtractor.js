@@ -1,7 +1,6 @@
 // AI Call #1 — Explicit extraction only.
 //
 // Extracts ONLY what the user directly stated. No inference, no guessing.
-// The inferred bucket has been removed — that is now AI Call #2's job.
 
 const OpenAI = require("openai");
 
@@ -51,6 +50,21 @@ ALLOWED VALUES — only use these exactly, or null if the user did not explicitl
   style_makeup: none | minimal | natural | bold | dramatic | artistic
   accessories_glasses: none | thin_frame | thick_frame | sunglasses | cat_eye | round
   accessories_jewelry: none | minimal | statement | earrings_only | layered
+
+CRITICAL — accessories "none" meaning:
+  "none" means the user has NO glasses / NO jewelry at all, or did not mention them.
+  "none" does NOT mean "glasses mentioned but type unknown."
+
+  If the user says they wear glasses (in any language, e.g. "gözlüklü", "mit Brille", "wearing glasses",
+  "glasses", "lunettes") but does NOT specify the frame style:
+    → use "thin_frame" as the default type — do NOT use "none"
+
+  If the user mentions jewelry (in any language) but does NOT specify the type:
+    → use "minimal" as the default type — do NOT use "none"
+
+  Only use "none" when:
+    - The user explicitly says they have no glasses / no jewelry
+    - The user did not mention glasses / jewelry at all (leave null instead)
 
 Return ONLY this JSON:
 {

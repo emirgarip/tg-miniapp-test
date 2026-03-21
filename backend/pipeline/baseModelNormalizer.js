@@ -1,15 +1,12 @@
-// Base Model Normalizer — three pure functions, no LLM calls.
+// Base Model Normalizer — two pure functions, no LLM calls.
 //
 // buildPartialFlat(explicit)
 //   → applies user values, fills REQUIRED fields with defaults, leaves everything else null
 //
-// mergeInferred(partialFlat, inferred)
-//   → fills INFERRABLE fields from AI Call #2 results (only if user didn't already provide them)
-//
 // buildNestedModel(flat)
 //   → converts the flat structure into the nested JSON the frontend expects
 
-const { DEFAULTS, REQUIRED_FIELDS, INFERRABLE_FIELDS, ALL_FIELDS, sanitize } = require("./baseModelDefaults");
+const { DEFAULTS, REQUIRED_FIELDS, ALL_FIELDS, sanitize } = require("./baseModelDefaults");
 
 // ── Step 1: Apply explicit values + required defaults ────────────────────────
 // Priority: user > required default > null
@@ -29,27 +26,10 @@ function buildPartialFlat(explicit = {}) {
   return flat;
 }
 
-// ── Step 2: Apply inference results ─────────────────────────────────────────
-// Only touches INFERRABLE fields that the user did not already provide.
-// User values are never overwritten.
-function mergeInferred(partialFlat, inferred = {}) {
-  const merged = { ...partialFlat };
-  for (const key of INFERRABLE_FIELDS) {
-    if (merged[key]?.source !== "user") {
-      const val = inferred[key];
-      if (val != null) {
-        merged[key] = { value: val, source: "inferred" };
-      }
-    }
-  }
-  return merged;
-}
-
-// ── Step 3: Build nested output + compute stats ──────────────────────────────
+// ── Step 2: Build nested output + compute stats ──────────────────────────────
 function buildNestedModel(flat) {
-  const userCount     = ALL_FIELDS.filter((k) => flat[k]?.source === "user").length;
-  const inferredCount = ALL_FIELDS.filter((k) => flat[k]?.source === "inferred").length;
-  const defaultsOnly  = userCount === 0 && inferredCount === 0;
+  const userCount    = ALL_FIELDS.filter((k) => flat[k]?.source === "user").length;
+  const defaultsOnly = userCount === 0;
 
   const model = {
     gender_presentation: flat.gender_presentation,
@@ -102,7 +82,7 @@ function buildNestedModel(flat) {
     },
   };
 
-  return { model, userCount, inferredCount, defaultsOnly };
+  return { model, userCount, defaultsOnly };
 }
 
-module.exports = { buildPartialFlat, mergeInferred, buildNestedModel };
+module.exports = { buildPartialFlat, buildNestedModel };

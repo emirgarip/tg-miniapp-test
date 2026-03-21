@@ -37,24 +37,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // ─── stats bar ────────────────────────────────────────────────────────────
   function renderStats(data) {
-    const userCount     = data.user_traits_found ?? 0;
-    const inferredCount = data.inferred_traits ?? 0;
-    const totalMs       = data.total_latency_ms ?? 0;
-    const extractMs     = data.latency_extraction_ms ?? 0;
-    const inferMs       = data.latency_inference_ms ?? 0;
-    const extractModel  = data.extractor_model || "gpt-4.1-mini";
-    const inferModel    = data.inferrer_model  || "gpt-4.1-mini";
+    const userCount = data.user_traits_found ?? 0;
+    const latencyMs = data.latency_ms ?? 0;
+    const model     = data.model || "gpt-4.1-mini";
 
     const bar = document.createElement("div");
     bar.className = "stats-bar";
     bar.innerHTML =
       `<span class="stat"><span class="source-badge source-badge--user">user</span> ${userCount} fields</span>` +
-      `<span class="stat"><span class="source-badge source-badge--inferred">inferred</span> ${inferredCount} fields</span>` +
-      `<span class="stat stat--muted">` +
-        `Extraction: ${extractModel} (${extractMs} ms) · ` +
-        `Inference: ${inferModel} (${inferMs} ms) · ` +
-        `Total: ${totalMs} ms` +
-      `</span>`;
+      `<span class="stat stat--muted">${model} · ${latencyMs} ms</span>`;
     output.appendChild(bar);
   }
 
