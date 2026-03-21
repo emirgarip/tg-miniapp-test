@@ -176,71 +176,40 @@ body {
   color: #64748b;
 }
 
-/* ── Model viewer ───────────────────────────────────────────────────────── */
+/* ── JSON output ────────────────────────────────────────────────────────── */
 
-.model-viewer {
+.json-output-wrap {
   margin-top: 14px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
+  position: relative;
+}
+
+.json-output {
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: 12px;
   padding: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
+  font-size: 0.8rem;
+  line-height: 1.65;
+  white-space: pre;
+  overflow-x: auto;
+  word-break: normal;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
-.viewer-title {
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #64748b;
-  margin-bottom: 14px;
-}
-
-/* ── JSON groups ────────────────────────────────────────────────────────── */
-
-.json-group {
-  margin-bottom: 12px;
-  border: 1px solid #f1f5f9;
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.json-group__title {
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: #7c3aed;
-  background: #faf5ff;
-  border-bottom: 1px solid #ede9fe;
-  padding: 6px 12px;
-}
-
-/* ── Field rows ─────────────────────────────────────────────────────────── */
-
-.field-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  border-bottom: 1px solid #f8fafc;
+.copy-btn {
+  display: block;
+  margin-bottom: 8px;
+  padding: 7px 16px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
   font-size: 0.85rem;
+  font-weight: 600;
+  background-color: #0f172a;
+  color: #fff;
+  transition: background-color 0.15s;
 }
 
-.field-row:last-child {
-  border-bottom: none;
-}
-
-.field-key {
-  color: #475569;
-  min-width: 140px;
-  flex-shrink: 0;
-  font-size: 0.82rem;
-}
-
-.field-value {
-  color: #0f172a;
-  font-weight: 500;
-  flex: 1;
-  word-break: break-word;
-}
+.copy-btn:hover { background-color: #1e293b; }
+.copy-btn:active { transform: scale(0.97); }
