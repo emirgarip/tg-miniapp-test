@@ -440,7 +440,7 @@ const BLOCK_SCENE = `The scene takes place in a cozy dimly-lit bedroom at night,
 
 const BLOCK_LIGHTING = `Lighting is warm ambient from a soft bedside lamp, creating low-contrast shadows, soft highlights, and cinematic depth.`;
 
-const BLOCK_CAMERA_BASE = `The subject is captured in a full-body composition, visible from head to feet while maintaining a close and intimate camera distance. The camera remains relatively near, preserving facial clarity and body detail without flattening perspective.`;
+const BLOCK_CAMERA_BASE = `The subject is captured in a full-body composition, clearly visible from head to feet within the frame. The camera maintains a close and intimate distance while preserving a natural perspective, avoiding flattening or artificial framing. The entire body, including legs and feet, remains fully inside the composition without cropping.`;
 
 // Dynamically builds the camera block.
 // feet_focus == "emphasized" → appends a feet emphasis directive.
@@ -453,7 +453,7 @@ function buildCameraBlock(m) {
   return BLOCK_CAMERA_BASE;
 }
 
-const BLOCK_POSE = `The subject is positioned naturally on the bed in a relaxed, slightly reclined or lying pose, allowing the full body to remain visible within the frame while maintaining a casual, unposed feeling. The posture is natural and believable, with subtle variation in limb positioning to preserve realism.`;
+const BLOCK_POSE = `The subject is positioned naturally on the bed in a relaxed, slightly reclined or lying pose. The posture remains unforced and believable, with limbs positioned organically rather than arranged for the camera. The legs remain fully visible within the frame while maintaining a natural flow. The pose allows the natural body proportions, including the width of the hips and lower body silhouette, to remain visually readable.`;
 
 const BLOCK_WARDROBE = `--- WARDROBE (STRICT CONTROL) ---
 
