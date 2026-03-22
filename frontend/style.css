@@ -176,6 +176,67 @@ body {
   color: #64748b;
 }
 
+/* ── Result tabs ────────────────────────────────────────────────────────── */
+
+.result-tabs {
+  display: flex;
+  gap: 2px;
+  margin-top: 14px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.tab-btn {
+  padding: 7px 18px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: none;
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #94a3b8;
+  border-radius: 6px 6px 0 0;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.tab-btn--active {
+  color: #0f172a;
+  border-bottom-color: #2ea6ff;
+}
+
+.tab-btn:hover:not(.tab-btn--active) {
+  color: #475569;
+}
+
+.tab-panel {
+  display: none;
+}
+
+.tab-panel--active {
+  display: block;
+}
+
+/* ── Final Prompt output ────────────────────────────────────────────────── */
+
+.prompt-output-wrap {
+  margin-top: 14px;
+  position: relative;
+}
+
+.prompt-output {
+  background: #fff;
+  color: #1e293b;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 18px 20px;
+  font-size: 0.875rem;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  word-break: break-word;
+  text-align: left;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
 /* ── JSON output ────────────────────────────────────────────────────────── */
 
 .json-output-wrap {

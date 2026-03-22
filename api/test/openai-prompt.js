@@ -6,6 +6,7 @@
 const { getDb } = require("../../backend/db/mongo");
 const { extractBaseModelExplicit } = require("../../backend/pipeline/baseModelExtractor");
 const { buildPartialFlat, buildNestedModel } = require("../../backend/pipeline/baseModelNormalizer");
+const { buildFinalImagePrompt } = require("../../backend/pipeline/promptBuilder");
 
 const MODEL = "gpt-4.1-mini";
 
@@ -42,6 +43,9 @@ module.exports = async (req, res) => {
     const flat = buildPartialFlat(extraction.explicit);
     const { model, userCount, defaultsOnly } = buildNestedModel(flat);
 
+    // ── Build deterministic final image prompt from model JSON ────────────────
+    const finalPrompt = buildFinalImagePrompt(model);
+
     const latencyMs = Date.now() - t0;
 
     // ── Informational note ────────────────────────────────────────────────────
@@ -67,6 +71,7 @@ module.exports = async (req, res) => {
 
     return res.status(200).json({
       base_model: model,
+      final_prompt: finalPrompt,
       user_traits_found: userCount,
       defaults_only: defaultsOnly,
       note,

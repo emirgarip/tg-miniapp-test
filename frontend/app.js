@@ -49,6 +49,101 @@ document.addEventListener("DOMContentLoaded", () => {
     output.appendChild(bar);
   }
 
+  // ─── result tabs ─────────────────────────────────────────────────────────
+  function renderResultTabs(data) {
+    // ── Tab bar ──────────────────────────────────────────────────────────────
+    const tabBar = document.createElement("div");
+    tabBar.className = "result-tabs";
+
+    const jsonTabBtn = document.createElement("button");
+    jsonTabBtn.className = "tab-btn tab-btn--active";
+    jsonTabBtn.textContent = "JSON";
+
+    const promptTabBtn = document.createElement("button");
+    promptTabBtn.className = "tab-btn";
+    promptTabBtn.textContent = "Final Prompt";
+
+    tabBar.appendChild(jsonTabBtn);
+    tabBar.appendChild(promptTabBtn);
+
+    // ── JSON panel (existing behavior, untouched) ────────────────────────────
+    const jsonPanel = document.createElement("div");
+    jsonPanel.className = "tab-panel tab-panel--active";
+
+    const jsonStr = JSON.stringify(data.base_model, null, 2);
+    const jsonWrap = document.createElement("div");
+    jsonWrap.className = "json-output-wrap";
+
+    const copyJsonBtn = document.createElement("button");
+    copyJsonBtn.className = "copy-btn";
+    copyJsonBtn.textContent = "Copy JSON";
+    copyJsonBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(jsonStr);
+        copyJsonBtn.textContent = "Copied!";
+      } catch (_) {
+        copyJsonBtn.textContent = "Copy failed";
+      }
+      setTimeout(() => { copyJsonBtn.textContent = "Copy JSON"; }, 1600);
+    });
+    jsonWrap.appendChild(copyJsonBtn);
+
+    const pre = document.createElement("pre");
+    pre.className = "json-output";
+    pre.textContent = jsonStr;
+    jsonWrap.appendChild(pre);
+    jsonPanel.appendChild(jsonWrap);
+
+    // ── Final Prompt panel ───────────────────────────────────────────────────
+    const promptPanel = document.createElement("div");
+    promptPanel.className = "tab-panel";
+
+    if (data.final_prompt) {
+      const promptWrap = document.createElement("div");
+      promptWrap.className = "prompt-output-wrap";
+
+      const copyPromptBtn = document.createElement("button");
+      copyPromptBtn.className = "copy-btn";
+      copyPromptBtn.textContent = "Copy Final Prompt";
+      copyPromptBtn.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(data.final_prompt);
+          copyPromptBtn.textContent = "Copied!";
+        } catch (_) {
+          copyPromptBtn.textContent = "Copy failed";
+        }
+        setTimeout(() => { copyPromptBtn.textContent = "Copy Final Prompt"; }, 1600);
+      });
+      promptWrap.appendChild(copyPromptBtn);
+
+      const promptText = document.createElement("div");
+      promptText.className = "prompt-output";
+      promptText.textContent = data.final_prompt;
+      promptWrap.appendChild(promptText);
+      promptPanel.appendChild(promptWrap);
+    } else {
+      const empty = document.createElement("p");
+      empty.className = "info-note";
+      empty.textContent = "Final prompt could not be generated.";
+      promptPanel.appendChild(empty);
+    }
+
+    // ── Tab switching ────────────────────────────────────────────────────────
+    function switchTab(name) {
+      jsonTabBtn.classList.toggle("tab-btn--active", name === "json");
+      promptTabBtn.classList.toggle("tab-btn--active", name === "prompt");
+      jsonPanel.classList.toggle("tab-panel--active", name === "json");
+      promptPanel.classList.toggle("tab-panel--active", name === "prompt");
+    }
+
+    jsonTabBtn.addEventListener("click", () => switchTab("json"));
+    promptTabBtn.addEventListener("click", () => switchTab("prompt"));
+
+    output.appendChild(tabBar);
+    output.appendChild(jsonPanel);
+    output.appendChild(promptPanel);
+  }
+
   // ─── main click ───────────────────────────────────────────────────────────
   btn.addEventListener("click", async () => {
     const input = userInput.value.trim();
@@ -96,33 +191,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       renderStats(data);
-
-      // ── JSON block + copy button ─────────────────────────────────────────
-      const jsonStr = JSON.stringify(data.base_model, null, 2);
-
-      const wrap = document.createElement("div");
-      wrap.className = "json-output-wrap";
-
-      const copyBtn = document.createElement("button");
-      copyBtn.className = "copy-btn";
-      copyBtn.textContent = "Copy JSON";
-      copyBtn.addEventListener("click", async () => {
-        try {
-          await navigator.clipboard.writeText(jsonStr);
-          copyBtn.textContent = "Copied!";
-        } catch (_) {
-          copyBtn.textContent = "Copy failed";
-        }
-        setTimeout(() => { copyBtn.textContent = "Copy JSON"; }, 1600);
-      });
-      wrap.appendChild(copyBtn);
-
-      const pre = document.createElement("pre");
-      pre.className = "json-output";
-      pre.textContent = jsonStr;
-      wrap.appendChild(pre);
-
-      output.appendChild(wrap);
+      renderResultTabs(data);
 
     } catch (err) {
       renderError("Request failed: " + err.message);
