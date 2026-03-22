@@ -40,7 +40,7 @@ module.exports = async (req, res) => {
     }
 
     // ── Build model: user values + required defaults + optional nulls ─────────
-    const flat = buildPartialFlat(extraction.explicit);
+    const { flat, sanitizeWarnings } = buildPartialFlat(extraction.explicit);
     const { model, userCount, defaultsOnly } = buildNestedModel(flat);
 
     // ── Build deterministic final image prompt from model JSON ────────────────
@@ -74,6 +74,7 @@ module.exports = async (req, res) => {
       final_prompt: finalPrompt,
       user_traits_found: userCount,
       defaults_only: defaultsOnly,
+      sanitize_warnings: sanitizeWarnings.length > 0 ? sanitizeWarnings : null,
       note,
       model: MODEL,
       latency_ms: latencyMs,

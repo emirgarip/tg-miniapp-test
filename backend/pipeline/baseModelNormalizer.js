@@ -11,19 +11,35 @@ const { DEFAULTS, REQUIRED_FIELDS, ALL_FIELDS, sanitize } = require("./baseModel
 // ── Step 1: Apply explicit values + required defaults ────────────────────────
 // Priority: user > required default > null
 // Optional and inferrable fields stay null here — they are not touched.
+//
+// Returns { flat, sanitizeWarnings }.
+// sanitizeWarnings contains entries for every value the AI returned that was
+// not in the allowed list and had to be dropped.
 function buildPartialFlat(explicit = {}) {
   const flat = {};
+  const sanitizeWarnings = [];
+
   for (const key of ALL_FIELDS) {
-    const userVal = sanitize(key, explicit[key]);
+    const rawVal = explicit[key];
+    const userVal = sanitize(key, rawVal);
+
     if (userVal !== null) {
       flat[key] = { value: userVal, source: "user" };
-    } else if (REQUIRED_FIELDS.has(key)) {
-      flat[key] = { value: DEFAULTS[key], source: "default" };
     } else {
-      flat[key] = { value: null, source: "default" };
+      // AI returned something but it wasn't a valid allowed value — dropped.
+      if (rawVal != null) {
+        sanitizeWarnings.push({ field: key, received: String(rawVal) });
+      }
+
+      if (REQUIRED_FIELDS.has(key)) {
+        flat[key] = { value: DEFAULTS[key], source: "default" };
+      } else {
+        flat[key] = { value: null, source: "default" };
+      }
     }
   }
-  return flat;
+
+  return { flat, sanitizeWarnings };
 }
 
 // ── Step 2: Build nested output + compute stats ──────────────────────────────

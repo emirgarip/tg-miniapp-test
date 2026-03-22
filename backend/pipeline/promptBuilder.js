@@ -33,6 +33,25 @@ function joinAnd(arr) {
 }
 
 // ── Enum mappings ─────────────────────────────────────────────────────────────
+//
+// Every allowed value from baseModelDefaults.js is mapped here.
+// Maps serve two purposes:
+//   1. Prompt generation — the phrase is inserted into the MODEL IDENTITY block.
+//   2. Dropdown labels  — each key→phrase pair becomes a selectable option in the UI.
+//
+// Fields currently excluded from MODEL IDENTITY (face.*, body.feet_focus) still
+// have complete maps here so dropdowns can be built without touching this file again.
+// "none" entries are included in every map that has them so dropdowns show the option;
+// phraseNoNone() silently skips them at prompt-generation time.
+
+// ── Identity ──────────────────────────────────────────────────────────────────
+
+const GENDER_MAP = {
+  female:      "Female",
+  male:        "Male",
+  androgynous: "Androgynous",
+  non_binary:  "Non-binary",
+};
 
 const AGE_MAP = {
   "20-24": "in her early to mid-20s",
@@ -126,6 +145,66 @@ const EYES_SHAPE_MAP = {
   close_set: "close-set",
 };
 
+// ── Face ──────────────────────────────────────────────────────────────────────
+// Face fields are currently excluded from MODEL IDENTITY prompt generation.
+// Maps are complete here for future prompt integration and dropdown use.
+
+const FACE_SHAPE_MAP = {
+  oval:     "an oval face shape",
+  round:    "a round face shape",
+  square:   "a square face shape",
+  heart:    "a heart-shaped face",
+  oblong:   "an oblong face shape",
+  diamond:  "a diamond face shape",
+  triangle: "a triangular face shape",
+};
+
+const FACE_JAWLINE_MAP = {
+  sharp:          "a sharp jawline",
+  defined:        "a defined jawline",
+  softly_defined: "a softly defined jawline",
+  rounded:        "a rounded jawline",
+  soft:           "a soft jawline",
+};
+
+const FACE_NOSE_MAP = {
+  straight: "a straight nose",
+  button:   "a button nose",
+  upturned: "an upturned nose",
+  roman:    "a roman nose",
+  wide:     "a wide nose",
+  narrow:   "a narrow nose",
+  snub:     "a snub nose",
+};
+
+const FACE_LIPS_MAP = {
+  full:       "full lips",
+  balanced:   "balanced lips",
+  thin:       "thin lips",
+  wide:       "wide lips",
+  cupids_bow: "cupid's bow lips",
+  pouty:      "pouty lips",
+};
+
+const FACE_CHEEKBONES_MAP = {
+  high:      "high cheekbones",
+  prominent: "prominent cheekbones",
+  balanced:  "balanced cheekbones",
+  soft:      "soft cheekbones",
+  flat:      "flat cheekbones",
+};
+
+// "none" = no notable skin details (included for dropdown; skipped in prompt via phraseNoNone).
+const FACE_SKIN_DETAILS_MAP = {
+  none:     "None",
+  freckles: "freckles",
+  moles:    "moles",
+  scars:    "scars",
+  dimples:  "dimples",
+};
+
+// ── Body ──────────────────────────────────────────────────────────────────────
+
 const BODY_TYPE_MAP = {
   petite:       "petite",
   slim:         "slim",
@@ -135,6 +214,50 @@ const BODY_TYPE_MAP = {
   full_figured: "full-figured",
   plus_size:    "plus-size",
 };
+
+const BODY_HIPS_MAP = {
+  narrow:   "narrow hips",
+  balanced: "balanced hips",
+  wide:     "wide hips",
+  full:     "full hips",
+};
+
+const BODY_WAIST_MAP = {
+  narrow:  "a narrow waist",
+  defined: "a defined waist",
+  average: "an average waist",
+  full:    "a full waist",
+};
+
+const BODY_BUST_MAP = {
+  small:    "a small bust",
+  balanced: "a balanced bust",
+  full:     "a full bust",
+  large:    "a large bust",
+};
+
+const BODY_LEGS_MAP = {
+  slim:     "slim legs",
+  balanced: "balanced legs",
+  athletic: "athletic legs",
+  full:     "full legs",
+};
+
+const BODY_HEIGHT_MAP = {
+  petite:  "petite",
+  average: "average",
+  tall:    "tall",
+};
+
+// Excluded from MODEL IDENTITY — framing is fixed as mid-thigh to head.
+// Map is complete here for future use and dropdown.
+const BODY_FEET_FOCUS_MAP = {
+  none:       "None",
+  visible:    "Visible",
+  emphasized: "Emphasized",
+};
+
+// ── Style ─────────────────────────────────────────────────────────────────────
 
 const STYLE_VIBE_MAP = {
   natural:    "natural and minimal",
@@ -146,8 +269,9 @@ const STYLE_VIBE_MAP = {
   minimalist: "minimalist and clean",
 };
 
-// "none" is skipped via phraseNoNone — only actual makeup styles are mentioned.
+// "none" = no makeup. Included for dropdown; phraseNoNone() skips it in prompt generation.
 const MAKEUP_MAP = {
+  none:     "None",
   minimal:  "minimal",
   natural:  "natural",
   bold:     "bold",
@@ -155,8 +279,9 @@ const MAKEUP_MAP = {
   artistic: "artistic",
 };
 
-// "none" is skipped via phraseNoNone — user has no glasses / didn't mention them.
+// "none" = no glasses. Included for dropdown; phraseNoNone() skips it in prompt generation.
 const GLASSES_MAP = {
+  none:        "None",
   thin_frame:  "thin-frame glasses",
   thick_frame: "thick-frame glasses",
   sunglasses:  "sunglasses",
@@ -164,8 +289,9 @@ const GLASSES_MAP = {
   round:       "round glasses",
 };
 
-// "none" is skipped via phraseNoNone — user has no jewelry / didn't mention it.
+// "none" = no jewelry. Included for dropdown; phraseNoNone() skips it in prompt generation.
 const JEWELRY_MAP = {
+  none:          "None",
   minimal:       "minimal jewelry",
   statement:     "statement jewelry",
   earrings_only: "earrings",
@@ -176,8 +302,8 @@ const JEWELRY_MAP = {
 //
 // Builds strictly from non-null values in the model JSON.
 // Paragraph order: subject → hair → eyes → body → accessories → styling.
-// Face fields are intentionally excluded from this block.
-// body.feet_focus is intentionally excluded (framing is fixed as mid-thigh to head).
+// Face fields are intentionally excluded from this block for now.
+// body.feet_focus is intentionally excluded here — handled by buildCameraBlock().
 
 function buildModelIdentityBlock(m) {
   const parts = [];
@@ -234,10 +360,41 @@ function buildModelIdentityBlock(m) {
   }
 
   // ── 4. Body sentence ────────────────────────────────────────────────────────
+  // Includes type, then any non-null detail fields (hips, waist, bust, legs).
+  // Height impression, if present, is prepended as stature context.
+  // feet_focus is intentionally excluded here — handled by buildCameraBlock().
   {
-    const type = phrase(BODY_TYPE_MAP, val(m.body?.type));
-    if (type) {
-      parts.push(`Her body is ${type}, forming a balanced feminine silhouette.`);
+    const type   = phrase(BODY_TYPE_MAP,   val(m.body?.type));
+    const hips   = phrase(BODY_HIPS_MAP,   val(m.body?.hips));
+    const waist  = phrase(BODY_WAIST_MAP,  val(m.body?.waist));
+    const bust   = phrase(BODY_BUST_MAP,   val(m.body?.bust));
+    const legs   = phrase(BODY_LEGS_MAP,   val(m.body?.legs));
+    const height = phrase(BODY_HEIGHT_MAP, val(m.body?.height_impression));
+
+    const details = [hips, waist, bust, legs].filter(Boolean);
+
+    if (type && details.length > 0) {
+      const detailStr = joinAnd(details);
+      if (height) {
+        parts.push(`She is ${height}, with a ${type} body and ${detailStr}, forming a balanced feminine silhouette.`);
+      } else {
+        parts.push(`Her body is ${type}, with ${detailStr}, forming a balanced feminine silhouette.`);
+      }
+    } else if (type) {
+      if (height) {
+        parts.push(`She is ${height}, with a ${type} body forming a balanced feminine silhouette.`);
+      } else {
+        parts.push(`Her body is ${type}, forming a balanced feminine silhouette.`);
+      }
+    } else if (details.length > 0) {
+      const detailStr = joinAnd(details);
+      if (height) {
+        parts.push(`She is ${height}, with ${detailStr}.`);
+      } else {
+        parts.push(`She has ${detailStr}.`);
+      }
+    } else if (height) {
+      parts.push(`She appears ${height} in stature.`);
     }
   }
 
@@ -283,7 +440,20 @@ const BLOCK_SCENE = `The scene takes place in a cozy dimly-lit bedroom at night,
 
 const BLOCK_LIGHTING = `Lighting is warm ambient from a soft bedside lamp, creating low-contrast shadows, soft highlights, and cinematic depth.`;
 
-const BLOCK_CAMERA = `The camera perspective is slightly above bed level, framing the subject from mid-thigh to head, with a close and intimate distance. The subject is in sharp focus while the background remains softly blurred.`;
+const BLOCK_CAMERA_BASE = `The subject is captured in a full-body composition, visible from head to feet while maintaining a close and intimate camera distance. The camera remains relatively near, preserving facial clarity and body detail without flattening perspective.`;
+
+// Dynamically builds the camera block.
+// feet_focus == "emphasized" → appends a feet emphasis directive.
+// feet_focus == "visible" / "none" / null → base text only (full-body already covers it).
+function buildCameraBlock(m) {
+  const feetFocus = val(m.body?.feet_focus);
+  if (feetFocus === "emphasized") {
+    return BLOCK_CAMERA_BASE + " The feet are a deliberate focal point and should be rendered with full sharpness and visible detail.";
+  }
+  return BLOCK_CAMERA_BASE;
+}
+
+const BLOCK_POSE = `The subject is positioned naturally on the bed in a relaxed, slightly reclined or lying pose, allowing the full body to remain visible within the frame while maintaining a casual, unposed feeling. The posture is natural and believable, with subtle variation in limb positioning to preserve realism.`;
 
 const BLOCK_WARDROBE = `--- WARDROBE (STRICT CONTROL) ---
 
@@ -302,7 +472,8 @@ The overall image should feel indistinguishable from a real late-night smartphon
 function buildFinalImagePrompt(modelJson) {
   if (!modelJson) return "";
 
-  const identity = buildModelIdentityBlock(modelJson);
+  const identity    = buildModelIdentityBlock(modelJson);
+  const cameraBlock = buildCameraBlock(modelJson);
 
   return [
     BLOCK_INTRO,
@@ -311,7 +482,13 @@ function buildFinalImagePrompt(modelJson) {
     "",
     BLOCK_LIGHTING,
     "",
-    BLOCK_CAMERA,
+    "--- CAMERA & COMPOSITION ---",
+    "",
+    cameraBlock,
+    "",
+    "--- POSE ---",
+    "",
+    BLOCK_POSE,
     "",
     "--- MODEL IDENTITY ---",
     "",
@@ -323,4 +500,41 @@ function buildFinalImagePrompt(modelJson) {
   ].join("\n");
 }
 
-module.exports = { buildFinalImagePrompt, buildModelIdentityBlock };
+// ── Exports ───────────────────────────────────────────────────────────────────
+//
+// All maps are exported so the dropdown layer can import them directly
+// without duplicating any values. Add new maps here as the schema grows.
+
+module.exports = {
+  // Builder functions
+  buildFinalImagePrompt,
+  buildModelIdentityBlock,
+
+  // All enum maps (complete — one entry per allowed value in baseModelDefaults.js)
+  GENDER_MAP,
+  AGE_MAP,
+  HERITAGE_MAP,
+  SKIN_TONE_MAP,
+  HAIR_COLOR_MAP,
+  HAIR_TEXTURE_MAP,
+  HAIR_LENGTH_MAP,
+  EYES_COLOR_MAP,
+  EYES_SHAPE_MAP,
+  FACE_SHAPE_MAP,
+  FACE_JAWLINE_MAP,
+  FACE_NOSE_MAP,
+  FACE_LIPS_MAP,
+  FACE_CHEEKBONES_MAP,
+  FACE_SKIN_DETAILS_MAP,
+  BODY_TYPE_MAP,
+  BODY_HEIGHT_MAP,
+  BODY_BUST_MAP,
+  BODY_WAIST_MAP,
+  BODY_HIPS_MAP,
+  BODY_LEGS_MAP,
+  BODY_FEET_FOCUS_MAP,
+  STYLE_VIBE_MAP,
+  MAKEUP_MAP,
+  GLASSES_MAP,
+  JEWELRY_MAP,
+};

@@ -23,33 +23,35 @@ STRICT RULES:
 - Age conversion: convert a specific age to the nearest range.
   Ranges: "20-24" | "25-29" | "30-34" | "35-39" | "40-44" | "45-50" | "50+"
 
-ALLOWED VALUES — only use these exactly, or null if the user did not explicitly state it:
+ALLOWED VALUES — only use these exactly, or null if the user did not explicitly state it.
+Hints in parentheses help you pick the closest bin when descriptions are extreme or ambiguous.
+
   gender_presentation: female | male | androgynous | non_binary
   age_range: 20-24 | 25-29 | 30-34 | 35-39 | 40-44 | 45-50 | 50+
   heritage_look: east_asian | south_asian | southeast_asian | middle_eastern | black_african | latin_hispanic | eastern_european | western_european | scandinavian | mediterranean | mixed_ambiguous
-  skin_tone: fair | light | light_olive | olive | warm_beige | tan | medium_brown | brown | deep_brown | ebony
-  hair_color: black | dark_brown | medium_brown | light_brown | auburn | red | strawberry_blonde | dark_blonde | blonde | platinum_blonde | silver | white | dyed_unusual
-  hair_texture: straight | slightly_wavy | wavy | curly | coily | kinky
-  hair_length: very_short | short | chin_length | shoulder_length | long | very_long
-  eyes_color: brown | dark_brown | hazel | green | blue | gray | amber
-  eyes_shape: almond | round | monolid | hooded | upturned | downturned | wide_set | close_set
-  face_shape: oval | round | square | heart | oblong | diamond | triangle
-  face_jawline: sharp | defined | softly_defined | rounded | soft
-  face_nose: straight | button | upturned | roman | wide | narrow | snub
-  face_lips: full | balanced | thin | wide | cupids_bow | pouty
-  face_cheekbones: high | prominent | balanced | soft | flat
+  skin_tone: fair (very pale, porcelain) | light (pale, not porcelain) | light_olive (light with warm olive undertone) | olive (medium olive, Mediterranean) | warm_beige (warm peachy tone, not olive) | tan (visibly sun-tanned) | medium_brown (clearly brown) | brown (medium-dark brown) | deep_brown (very dark brown) | ebony (deepest, near-black)
+  hair_color: black | dark_brown | medium_brown | light_brown | auburn (reddish-brown) | red | strawberry_blonde | dark_blonde | blonde | platinum_blonde | silver | white | dyed_unusual (unnatural color)
+  hair_texture: straight | slightly_wavy (loose waves, barely wavy) | wavy (clear waves) | curly (defined curls) | coily (tight spring-like coils) | kinky (very tight, densely coiled)
+  hair_length: very_short (buzz/cropped) | short (above chin) | chin_length | shoulder_length | long (below shoulder) | very_long (mid-back or longer)
+  eyes_color: brown | dark_brown | hazel (brown-green mix) | green | blue | gray | amber (golden-brown)
+  eyes_shape: almond | round | monolid (no visible crease) | hooded (heavy upper lid) | upturned (outer corners raised) | downturned (outer corners lowered) | wide_set | close_set
+  face_shape: oval | round | square | heart | oblong (elongated oval) | diamond | triangle
+  face_jawline: sharp (very angular) | defined (clear but not extreme) | softly_defined (gentle definition) | rounded | soft (very gentle, no angles)
+  face_nose: straight | button (small, rounded tip) | upturned | roman (slightly curved bridge) | wide | narrow | snub (short, slightly upturned)
+  face_lips: full | balanced (average) | thin | wide | cupids_bow (prominent M-shape) | pouty
+  face_cheekbones: high | prominent (forward-facing, sculpted) | balanced (average) | soft (subtle) | flat (barely visible)
   face_skin_details: none | freckles | moles | scars | dimples
-  body_type: petite | slim | slim_curvy | athletic | curvy | full_figured | plus_size
-  body_height_impression: petite | average | tall
-  body_bust: small | balanced | full | large
-  body_waist: narrow | defined | average | full
-  body_hips: narrow | balanced | wide | full
-  body_legs: slim | balanced | athletic | full
+  body_type: petite (small frame, short) | slim (lean, little curve) | slim_curvy (slim waist with curves) | athletic (toned, muscular) | curvy (pronounced curves) | full_figured (fuller curves, hourglass) | plus_size (larger frame overall)
+  body_height_impression: petite (visibly short) | average | tall (visibly tall)
+  body_bust: small (noticeably small) | balanced (proportional) | full (fuller than average) | large (very large, prominent)
+  body_waist: narrow (clearly narrow) | defined (visible definition) | average | full (thick, minimal definition)
+  body_hips: narrow (slimmer than average) | balanced (proportional) | wide (clearly wider than average) | full (very wide, very prominent)
+  body_legs: slim | balanced (proportional) | athletic (muscular, toned) | full (thick, fuller)
   body_feet_focus: none | visible | emphasized
   style_vibe: natural | elegant | edgy | sporty | glamorous | bohemian | minimalist
-  style_makeup: none | minimal | natural | bold | dramatic | artistic
+  style_makeup: none (no makeup at all) | minimal (barely visible) | natural (subtle everyday look) | bold (defined, clearly visible) | dramatic (heavy, theatrical) | artistic (unconventional, creative)
   accessories_glasses: none | thin_frame | thick_frame | sunglasses | cat_eye | round
-  accessories_jewelry: none | minimal | statement | earrings_only | layered
+  accessories_jewelry: none | minimal | statement (large/bold pieces) | earrings_only | layered (multiple pieces)
 
 CRITICAL — accessories "none" meaning:
   "none" means the user has NO glasses / NO jewelry at all, or did not mention them.

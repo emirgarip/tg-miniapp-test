@@ -49,6 +49,30 @@ document.addEventListener("DOMContentLoaded", () => {
     output.appendChild(bar);
   }
 
+  // ─── sanitize warnings ───────────────────────────────────────────────────
+  function renderSanitizeWarnings(warnings) {
+    if (!warnings || warnings.length === 0) return;
+
+    const box = document.createElement("div");
+    box.className = "sanitize-warning";
+
+    const title = document.createElement("p");
+    title.className = "sanitize-warning-title";
+    title.textContent = `⚠ AI mapping warning — ${warnings.length} value(s) returned by the AI were not recognized and were dropped:`;
+    box.appendChild(title);
+
+    const list = document.createElement("ul");
+    list.className = "sanitize-warning-list";
+    warnings.forEach(({ field, received }) => {
+      const item = document.createElement("li");
+      item.textContent = `${field}: AI returned "${received}" — not in allowed list, dropped`;
+      list.appendChild(item);
+    });
+    box.appendChild(list);
+
+    output.appendChild(box);
+  }
+
   // ─── result tabs ─────────────────────────────────────────────────────────
   function renderResultTabs(data) {
     // ── Tab bar ──────────────────────────────────────────────────────────────
@@ -191,6 +215,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       renderStats(data);
+      renderSanitizeWarnings(data.sanitize_warnings);
       renderResultTabs(data);
 
     } catch (err) {

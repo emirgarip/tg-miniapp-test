@@ -176,6 +176,37 @@ body {
   color: #64748b;
 }
 
+/* ── Sanitize warning block ─────────────────────────────────────────────── */
+
+.sanitize-warning {
+  margin-top: 10px;
+  font-size: 0.84rem;
+  color: #7c2d12;
+  background: #fff7ed;
+  border: 1px solid #fb923c;
+  border-left: 4px solid #ea580c;
+  border-radius: 10px;
+  padding: 12px 14px;
+  text-align: left;
+}
+
+.sanitize-warning-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+  line-height: 1.45;
+}
+
+.sanitize-warning-list {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.7;
+}
+
+.sanitize-warning-list li {
+  font-family: "SF Mono", "Fira Code", "Roboto Mono", monospace;
+  font-size: 0.8rem;
+}
+
 /* ── Result tabs ────────────────────────────────────────────────────────── */
 
 .result-tabs {
