@@ -5,6 +5,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const hint = document.getElementById("hint");
   const output = document.getElementById("output");
 
+  const PASSWORD_STORAGE_KEY = "app_password_v1";
+
   if (tg) {
     try { tg.ready(); tg.expand(); } catch (_) {}
   }
@@ -195,11 +197,31 @@ document.addEventListener("DOMContentLoaded", () => {
         loading.textContent = loadingMsgs[msgIdx];
       }, 1800);
 
-      const response = await fetch(`${window.location.origin}/api/test/openai-prompt`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ input }),
-      });
+      async function callApi(password) {
+        const headers = { "Content-Type": "application/json" };
+        if (password) headers["x-app-password"] = password;
+
+        const resp = await fetch(`${window.location.origin}/api/test/openai-prompt`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ input }),
+        });
+        return resp;
+      }
+
+      let password = localStorage.getItem(PASSWORD_STORAGE_KEY) || "";
+      let response = await callApi(password);
+
+      // If the API is password-protected, ask once and retry.
+      if (response.status === 401) {
+        const entered = window.prompt("This test app is password-protected. Enter password:");
+        if (entered && entered.trim()) {
+          password = entered.trim();
+          localStorage.setItem(PASSWORD_STORAGE_KEY, password);
+          response = await callApi(password);
+        }
+      }
+
       const data = await response.json();
 
       clearInterval(loadingTimer);

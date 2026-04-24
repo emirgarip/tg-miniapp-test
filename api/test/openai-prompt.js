@@ -16,6 +16,18 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  // ── Simple password protection (optional) ───────────────────────────────────
+  // Set `APP_PASSWORD` in Vercel env to enable.
+  // Client must send it via `x-app-password` header (preferred) or `password` in body.
+  const requiredPassword = process.env.APP_PASSWORD;
+  if (requiredPassword) {
+    const provided =
+      String(req.headers["x-app-password"] || req.headers["X-App-Password"] || req.body?.password || "").trim();
+    if (provided !== requiredPassword) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+  }
+
   if (!process.env.OPENAI_API_KEY) {
     return res.status(500).json({ error: "OPENAI_API_KEY is not configured." });
   }
